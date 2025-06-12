@@ -3,7 +3,7 @@
     "short_name": "Fuel Cost",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#2196F3",
+    "background_color": "#FFFFFF",
     "theme_color": "#2196F3",
     "description": "Track your fuel consumption and costs with style.",
     "orientation": "portrait-primary",
