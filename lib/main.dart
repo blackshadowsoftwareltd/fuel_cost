@@ -15,23 +15,94 @@ class FuelCostApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Fuel Cost Tracker',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF2196F3), brightness: Brightness.light),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF2196F3), 
+          brightness: Brightness.light,
+        ),
         useMaterial3: true,
         fontFamily: 'Roboto',
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            elevation: 4,
-            shadowColor: Colors.black26,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        
+        // Enhanced AppBar theme
+        appBarTheme: const AppBarTheme(
+          elevation: 0,
+          centerTitle: true,
+          titleTextStyle: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.5,
           ),
         ),
+        
+        // Enhanced ElevatedButton theme
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            elevation: 3,
+            shadowColor: Colors.black26,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+            textStyle: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ),
+        
+        // Enhanced Card theme
         cardTheme: CardThemeData(
-          elevation: 8,
-          shadowColor: Colors.black12,
+          elevation: 4,
+          shadowColor: Colors.black.withValues(alpha: 0.1),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        ),
+        
+        // Enhanced FloatingActionButton theme
+        floatingActionButtonTheme: const FloatingActionButtonThemeData(
+          elevation: 6,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(16)),
+          ),
+        ),
+        
+        // Enhanced Input decoration theme
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: Color(0xFF2196F3), width: 2),
+          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        ),
+        
+        // Enhanced Dialog theme
+        dialogTheme: DialogThemeData(
+          elevation: 8,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          titleTextStyle: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        
+        // Enhanced SnackBar theme
+        snackBarTheme: SnackBarThemeData(
+          elevation: 6,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          behavior: SnackBarBehavior.floating,
         ),
       ),
+      
+      themeMode: ThemeMode.light,
       home: const HomeScreen(),
     );
   }
@@ -90,12 +161,12 @@ class _HomeScreenState extends State<HomeScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [backgroundColor.withOpacity(0.8), backgroundColor.withOpacity(0.6)],
+          colors: [backgroundColor.withValues(alpha: 0.8), backgroundColor.withValues(alpha: 0.6)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: backgroundColor.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: backgroundColor.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -104,7 +175,7 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           Container(
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(16)),
+            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(16)),
             child: Icon(icon, color: Colors.white, size: 20),
           ),
           const SizedBox(height: 12),
@@ -137,19 +208,19 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.circular(20),
         gradient: isPrimary
             ? LinearGradient(
-                colors: [color, color.withOpacity(0.8)],
+                colors: [color, color.withValues(alpha: 0.8)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               )
             : null,
-        boxShadow: [BoxShadow(color: color.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: color.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4))],
       ),
       child: ElevatedButton.icon(
         onPressed: onPressed,
         icon: Icon(icon, size: 24),
         label: Text(title),
         style: ElevatedButton.styleFrom(
-          backgroundColor: isPrimary ? Colors.transparent : color.withOpacity(0.1),
+          backgroundColor: isPrimary ? Colors.transparent : color.withValues(alpha: 0.1),
           foregroundColor: isPrimary ? Colors.white : color,
           elevation: 0,
           padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 24),
@@ -166,7 +237,7 @@ class _HomeScreenState extends State<HomeScreen> {
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [const Color(0xFF2196F3).withOpacity(0.1), const Color(0xFF21CBF3).withOpacity(0.05), Colors.white],
+            colors: [const Color(0xFF2196F3).withValues(alpha: 0.1), const Color(0xFF21CBF3).withValues(alpha: 0.05), Colors.white],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -200,7 +271,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: [
-                            BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 2)),
+                            BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8, offset: const Offset(0, 2)),
                           ],
                         ),
                         child: IconButton(

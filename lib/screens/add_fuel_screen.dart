@@ -165,8 +165,8 @@ class _AddFuelScreenState extends State<AddFuelScreen> {
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              const Color(0xFF2196F3).withOpacity(0.1),
-              const Color(0xFF21CBF3).withOpacity(0.05),
+              const Color(0xFF2196F3).withValues(alpha: 0.1),
+              const Color(0xFF21CBF3).withValues(alpha: 0.05),
               Colors.white,
             ],
             begin: Alignment.topCenter,
@@ -191,7 +191,7 @@ class _AddFuelScreenState extends State<AddFuelScreen> {
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
+                                color: Colors.black.withValues(alpha: 0.1),
                                 blurRadius: 8,
                                 offset: const Offset(0, 2),
                               ),
@@ -235,7 +235,7 @@ class _AddFuelScreenState extends State<AddFuelScreen> {
                         borderRadius: BorderRadius.circular(24),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
+                            color: Colors.black.withValues(alpha: 0.05),
                             blurRadius: 20,
                             offset: const Offset(0, 5),
                           ),
@@ -264,7 +264,7 @@ class _AddFuelScreenState extends State<AddFuelScreen> {
                                 margin: const EdgeInsets.all(8),
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF2196F3).withOpacity(0.1),
+                                  color: const Color(0xFF2196F3).withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: const Icon(Icons.local_gas_station, color: Color(0xFF2196F3)),
@@ -306,7 +306,7 @@ class _AddFuelScreenState extends State<AddFuelScreen> {
                                 margin: const EdgeInsets.all(8),
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF4CAF50).withOpacity(0.1),
+                                  color: const Color(0xFF4CAF50).withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: const Icon(Icons.attach_money, color: Color(0xFF4CAF50)),
@@ -350,7 +350,7 @@ class _AddFuelScreenState extends State<AddFuelScreen> {
                                 margin: const EdgeInsets.all(8),
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFFF9800).withOpacity(0.1),
+                                  color: const Color(0xFFFF9800).withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: const Icon(Icons.speed, color: Color(0xFFFF9800)),
@@ -389,8 +389,8 @@ class _AddFuelScreenState extends State<AddFuelScreen> {
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
-                              const Color(0xFF4CAF50).withOpacity(0.8),
-                              const Color(0xFF4CAF50).withOpacity(0.6),
+                              const Color(0xFF4CAF50).withValues(alpha: 0.8),
+                              const Color(0xFF4CAF50).withValues(alpha: 0.6),
                             ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
@@ -398,7 +398,7 @@ class _AddFuelScreenState extends State<AddFuelScreen> {
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF4CAF50).withOpacity(0.3),
+                              color: const Color(0xFF4CAF50).withValues(alpha: 0.3),
                               blurRadius: 12,
                               offset: const Offset(0, 6),
                             ),
@@ -479,10 +479,10 @@ class _AddFuelScreenState extends State<AddFuelScreen> {
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: const Color(0xFF2196F3).withOpacity(0.2)),
+                            border: Border.all(color: const Color(0xFF2196F3).withValues(alpha: 0.2)),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
+                                color: Colors.black.withValues(alpha: 0.05),
                                 blurRadius: 10,
                                 offset: const Offset(0, 4),
                               ),
@@ -496,7 +496,7 @@ class _AddFuelScreenState extends State<AddFuelScreen> {
                                   Container(
                                     padding: const EdgeInsets.all(8),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF2196F3).withOpacity(0.1),
+                                      color: const Color(0xFF2196F3).withValues(alpha: 0.1),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: const Icon(Icons.calculate, color: Color(0xFF2196F3), size: 20),
@@ -552,7 +552,7 @@ class _AddFuelScreenState extends State<AddFuelScreen> {
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF2196F3).withOpacity(0.4),
+                            color: const Color(0xFF2196F3).withValues(alpha: 0.4),
                             blurRadius: 12,
                             offset: const Offset(0, 6),
                           ),

@@ -217,7 +217,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           borderRadius: BorderRadius.circular(16),
           gradient: backgroundColor != null
               ? LinearGradient(
-                  colors: [backgroundColor.withOpacity(0.1), backgroundColor.withOpacity(0.05)],
+                  colors: [backgroundColor.withValues(alpha: 0.1), backgroundColor.withValues(alpha: 0.05)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 )
@@ -228,7 +228,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           leading: Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.1),
+              color: iconColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: iconColor, size: 28),
@@ -266,7 +266,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              Theme.of(context).colorScheme.primary.withOpacity(0.05),
+              Theme.of(context).colorScheme.primary.withValues(alpha: 0.05),
               Colors.white,
             ],
             begin: Alignment.topCenter,
