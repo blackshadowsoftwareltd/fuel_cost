@@ -15,7 +15,7 @@ void main() {
     await tester.pumpWidget(const FuelCostApp());
 
     // Verify that our main screen loads.
-    expect(find.text('Fuel Tracker'), findsOneWidget);
+    expect(find.text('Fuel Cost'), findsOneWidget);
     expect(find.text('Add Fuel Entry'), findsOneWidget);
   });
 }
