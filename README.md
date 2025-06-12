@@ -4,14 +4,11 @@ A beautiful Flutter app for tracking your fuel consumption and costs with a mode
 
 ## Screenshots
 
-### Home Screen
-![Home Screen](screenshots/Screenshot_1.png)
-
-### Add Fuel Entry
-![Add Fuel Entry](screenshots/Screenshot_2.png)
-
-### Fuel History & Details
-![Fuel History](screenshots/Screenshot_3.png)
+<div style="display: flex; gap: 10px; flex-wrap: wrap;">
+  <img src="screenshots/Screenshot_1.png" alt="Home Screen" style="flex: 1; min-width: 200px; max-width: 300px; height: auto;">
+  <img src="screenshots/Screenshot_2.png" alt="Add Fuel Entry" style="flex: 1; min-width: 200px; max-width: 300px; height: auto;">
+  <img src="screenshots/Screenshot_3.png" alt="Fuel History" style="flex: 1; min-width: 200px; max-width: 300px; height: auto;">
+</div>
 
 ## Features
 
