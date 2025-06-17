@@ -3,7 +3,10 @@ import 'screens/add_fuel_screen.dart';
 import 'screens/fuel_history_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/how_to_use_screen.dart';
+import 'screens/auth_screen.dart';
 import 'services/fuel_storage_service.dart';
+import 'services/auth_service.dart';
+import 'services/sync_service.dart';
 
 void main() {
   runApp(const FuelCostApp());
@@ -100,11 +103,14 @@ class _HomeScreenState extends State<HomeScreen> {
   int _totalEntries = 0;
   double? _averageMileage;
   double? _currentOdometer;
+  bool _isAuthenticated = false;
+  bool _isSyncing = false;
 
   @override
   void initState() {
     super.initState();
     _loadSummaryData();
+    _checkAuthStatus();
   }
 
   Future<void> _loadSummaryData() async {
@@ -125,6 +131,68 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error loading data: $e')));
+      }
+    }
+  }
+
+  Future<void> _checkAuthStatus() async {
+    final isAuth = await AuthService.isAuthenticated();
+    setState(() {
+      _isAuthenticated = isAuth;
+    });
+  }
+
+  Future<void> _handleSync() async {
+    if (!_isAuthenticated) {
+      // Navigate to sign in screen
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const AuthScreen()),
+      );
+      
+      // If sign in was successful, immediately sync
+      if (result == true) {
+        await _checkAuthStatus();
+        if (_isAuthenticated) {
+          await _performSync();
+        }
+      }
+    } else {
+      // User is already signed in, just sync
+      await _performSync();
+    }
+  }
+
+  Future<void> _performSync() async {
+    setState(() {
+      _isSyncing = true;
+    });
+
+    try {
+      await SyncService.fullSync();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Data synced successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        _loadSummaryData();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Sync failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSyncing = false;
+        });
       }
     }
   }
@@ -182,7 +250,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildActionButton({
     required IconData icon,
     required String title,
-    required VoidCallback onPressed,
+    required VoidCallback? onPressed,
     required Color color,
     bool isPrimary = false,
   }) {
@@ -299,6 +367,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   MaterialPageRoute(builder: (context) => const SettingsScreen()),
                                 );
                                 _loadSummaryData();
+                                _checkAuthStatus();
                               },
                             ),
                           ),
@@ -381,6 +450,43 @@ class _HomeScreenState extends State<HomeScreen> {
                       _loadSummaryData();
                     },
                     color: const Color(0xFF4CAF50),
+                  ),
+
+                  Container(
+                    margin: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [BoxShadow(color: const Color(0xFFFF9800).withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4))],
+                    ),
+                    child: ElevatedButton.icon(
+                      onPressed: _isSyncing ? null : _handleSync,
+                      icon: _isSyncing
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+                              ),
+                            )
+                          : Icon(
+                              _isAuthenticated ? Icons.cloud_upload : Icons.login,
+                              size: 24,
+                            ),
+                      label: Text(_isSyncing
+                          ? 'Syncing...'
+                          : _isAuthenticated
+                              ? 'Sync Now'
+                              : 'Sign In for Sync'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFFF9800).withValues(alpha: 0.1),
+                        foregroundColor: const Color(0xFFFF9800),
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 24),
+                        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      ),
+                    ),
                   ),
                 ],
               ),

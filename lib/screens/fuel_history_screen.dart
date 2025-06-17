@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/fuel_entry.dart';
 import '../services/fuel_storage_service.dart';
+import '../services/auth_service.dart';
+import '../services/sync_service.dart';
 
 class FuelHistoryScreen extends StatefulWidget {
   const FuelHistoryScreen({super.key});
@@ -56,12 +58,42 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
   Future<void> _deleteEntry(String id) async {
     try {
       await FuelStorageService.deleteFuelEntry(id);
-      await _loadData();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Entry deleted successfully')),
-        );
+      
+      // Try to delete from server if user is authenticated
+      final isAuthenticated = await AuthService.isAuthenticated();
+      if (isAuthenticated) {
+        try {
+          await SyncService.deleteEntryFromServer(id);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Entry deleted locally and from server!'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Entry deleted locally. Server delete failed: $e'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Entry deleted locally! Sign in to sync deletion with server.'),
+              backgroundColor: Colors.blue,
+            ),
+          );
+        }
       }
+      
+      await _loadData();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -117,27 +149,33 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
                 slivers: [
                   SliverToBoxAdapter(
                     child: Container(
-                      margin: const EdgeInsets.all(16),
+                      margin: EdgeInsets.symmetric(
+                        horizontal: MediaQuery.of(context).size.width < 400 ? 12 : 16,
+                        vertical: MediaQuery.of(context).size.width < 400 ? 12 : 16,
+                      ),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                           colors: [
                             colorScheme.primaryContainer,
-                            colorScheme.primaryContainer.withValues(alpha: 0.8),
+                            colorScheme.primaryContainer.withValues(alpha: 0.9),
                           ],
                         ),
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: colorScheme.shadow.withValues(alpha: 0.1),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
+                            color: colorScheme.primary.withValues(alpha: 0.1),
+                            blurRadius: 15,
+                            offset: const Offset(0, 5),
+                            spreadRadius: 2,
                           ),
                         ],
                       ),
                       child: Padding(
-                        padding: const EdgeInsets.all(24),
+                        padding: EdgeInsets.all(
+                          MediaQuery.of(context).size.width < 400 ? 16 : 24,
+                        ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -152,7 +190,7 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
                                 Text(
                                   'Summary',
                                   style: TextStyle(
-                                    fontSize: 24,
+                                    fontSize: MediaQuery.of(context).size.width < 400 ? 20 : 24,
                                     fontWeight: FontWeight.bold,
                                     color: colorScheme.onPrimaryContainer,
                                   ),
@@ -168,7 +206,9 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
                   ),
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: MediaQuery.of(context).size.width < 400 ? 12 : 16,
+                      ),
                       child: Row(
                         children: [
                           Icon(
@@ -180,7 +220,7 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
                           Text(
                             'Recent Entries',
                             style: TextStyle(
-                              fontSize: 18,
+                              fontSize: MediaQuery.of(context).size.width < 400 ? 16 : 18,
                               fontWeight: FontWeight.w600,
                               color: colorScheme.onSurface,
                             ),
@@ -220,38 +260,82 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
   }
 
   Widget _buildSummaryCards(ColorScheme colorScheme) {
-    return Row(
-      children: [
-        Expanded(
-          child: _buildSummaryCard(
-            icon: Icons.payments_rounded,
-            title: 'Total Cost',
-            value: '\$${_totalCost.toStringAsFixed(2)}',
-            color: Colors.red,
-            colorScheme: colorScheme,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildSummaryCard(
-            icon: Icons.local_gas_station_rounded,
-            title: 'Total Liters',
-            value: '${_totalLiters.toStringAsFixed(1)}L',
-            color: Colors.blue,
-            colorScheme: colorScheme,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildSummaryCard(
-            icon: Icons.trending_up_rounded,
-            title: 'Avg Price/L',
-            value: '\$${_averagePrice.toStringAsFixed(2)}',
-            color: Colors.green,
-            colorScheme: colorScheme,
-          ),
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isSmallScreen = constraints.maxWidth < 400;
+        
+        if (isSmallScreen) {
+          return Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildSummaryCard(
+                      icon: Icons.payments_rounded,
+                      title: 'Total Cost',
+                      value: '\$${_totalCost.toStringAsFixed(2)}',
+                      color: Colors.red,
+                      colorScheme: colorScheme,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _buildSummaryCard(
+                      icon: Icons.local_gas_station_rounded,
+                      title: 'Total Liters',
+                      value: '${_totalLiters.toStringAsFixed(1)}L',
+                      color: Colors.blue,
+                      colorScheme: colorScheme,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              _buildSummaryCard(
+                icon: Icons.trending_up_rounded,
+                title: 'Average Price per Liter',
+                value: '\$${_averagePrice.toStringAsFixed(2)}',
+                color: Colors.green,
+                colorScheme: colorScheme,
+              ),
+            ],
+          );
+        }
+        
+        return Row(
+          children: [
+            Expanded(
+              child: _buildSummaryCard(
+                icon: Icons.payments_rounded,
+                title: 'Total Cost',
+                value: '\$${_totalCost.toStringAsFixed(2)}',
+                color: Colors.red,
+                colorScheme: colorScheme,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildSummaryCard(
+                icon: Icons.local_gas_station_rounded,
+                title: 'Total Liters',
+                value: '${_totalLiters.toStringAsFixed(1)}L',
+                color: Colors.blue,
+                colorScheme: colorScheme,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildSummaryCard(
+                icon: Icons.trending_up_rounded,
+                title: 'Average Price/L',
+                value: '\$${_averagePrice.toStringAsFixed(2)}',
+                color: Colors.green,
+                colorScheme: colorScheme,
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -262,44 +346,69 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
     required Color color,
     required ColorScheme colorScheme,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: colorScheme.outline.withValues(alpha: 0.2),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            icon,
-            color: color,
-            size: 24,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: colorScheme.onSurface.withValues(alpha: 0.8),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isSmallScreen = MediaQuery.of(context).size.width < 400;
+        
+        return Container(
+          padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+          decoration: BoxDecoration(
+            color: colorScheme.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: colorScheme.outline.withValues(alpha: 0.2),
+              width: 1,
             ),
+            boxShadow: [
+              BoxShadow(
+                color: color.withValues(alpha: 0.1),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  icon,
+                  color: color,
+                  size: isSmallScreen ? 18 : 20,
+                ),
+              ),
+              SizedBox(height: isSmallScreen ? 8 : 12),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: isSmallScreen ? 11 : 12,
+                  fontWeight: FontWeight.w500,
+                  color: colorScheme.onSurface.withValues(alpha: 0.7),
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: isSmallScreen ? 16 : 18,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -374,134 +483,134 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
               stops: const [0.0, 1.0],
             ),
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isNarrow = constraints.maxWidth < 360;
+              
+              return Padding(
+                padding: EdgeInsets.all(isNarrow ? 16 : 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (isNarrow) ..._buildNarrowLayout(entry, colorScheme, dateFormatter, timeFormatter)
+                    else ..._buildWideLayout(entry, colorScheme, dateFormatter, timeFormatter),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _buildWideLayout(FuelEntry entry, ColorScheme colorScheme, DateFormat dateFormatter, DateFormat timeFormatter) {
+    return [
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.blue.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.local_gas_station_rounded,
+              color: Colors.blue,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(
-                        Icons.local_gas_station_rounded,
-                        color: Colors.blue,
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                '${entry.liters.toStringAsFixed(2)} Liters',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: colorScheme.onSurface,
-                                ),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.green.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  '\$${entry.totalCost.toStringAsFixed(2)}',
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.green,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.calendar_today_rounded,
-                                size: 16,
-                                color: colorScheme.onSurface.withValues(alpha: 0.6),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                dateFormatter.format(entry.dateTime),
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: colorScheme.onSurface.withValues(alpha: 0.8),
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Icon(
-                                Icons.access_time_rounded,
-                                size: 16,
-                                color: colorScheme.onSurface.withValues(alpha: 0.6),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                timeFormatter.format(entry.dateTime),
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: colorScheme.onSurface.withValues(alpha: 0.8),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.attach_money_rounded,
-                                size: 16,
-                                color: colorScheme.onSurface.withValues(alpha: 0.6),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                '\$${entry.pricePerLiter.toStringAsFixed(2)} per liter',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  color: colorScheme.onSurface.withValues(alpha: 0.8),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
+                    Flexible(
+                      child: Text(
+                        '${entry.liters.toStringAsFixed(2)} Liters',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.onSurface,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(12),
-                        onTap: () => _showDeleteDialog(entry.id),
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.red.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(
-                            Icons.delete_rounded,
-                            color: Colors.red,
-                            size: 20,
-                          ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '\$${entry.totalCost.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green,
                         ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.calendar_today_rounded,
+                      size: 16,
+                      color: colorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      dateFormatter.format(entry.dateTime),
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: colorScheme.onSurface.withValues(alpha: 0.8),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Icon(
+                      Icons.access_time_rounded,
+                      size: 16,
+                      color: colorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      timeFormatter.format(entry.dateTime),
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: colorScheme.onSurface.withValues(alpha: 0.8),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.attach_money_rounded,
+                      size: 16,
+                      color: colorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        '\$${entry.pricePerLiter.toStringAsFixed(2)} per liter',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: colorScheme.onSurface.withValues(alpha: 0.8),
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
@@ -509,9 +618,161 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> {
               ],
             ),
           ),
-        ),
+          const SizedBox(width: 8),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () => _showDeleteDialog(entry.id),
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.delete_rounded,
+                  color: Colors.red,
+                  size: 20,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
-    );
+    ];
+  }
+
+  List<Widget> _buildNarrowLayout(FuelEntry entry, ColorScheme colorScheme, DateFormat dateFormatter, DateFormat timeFormatter) {
+    return [
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.local_gas_station_rounded,
+                  color: Colors.blue,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                '${entry.liters.toStringAsFixed(2)}L',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+            ],
+          ),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.green.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  '\$${entry.totalCost.toStringAsFixed(2)}',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(10),
+                  onTap: () => _showDeleteDialog(entry.id),
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.delete_rounded,
+                      color: Colors.red,
+                      size: 18,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+      const SizedBox(height: 12),
+      Column(
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.calendar_today_rounded,
+                size: 14,
+                color: colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                dateFormatter.format(entry.dateTime),
+                style: TextStyle(
+                  fontSize: 13,
+                  color: colorScheme.onSurface.withValues(alpha: 0.8),
+                ),
+              ),
+              const Spacer(),
+              Icon(
+                Icons.access_time_rounded,
+                size: 14,
+                color: colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                timeFormatter.format(entry.dateTime),
+                style: TextStyle(
+                  fontSize: 13,
+                  color: colorScheme.onSurface.withValues(alpha: 0.8),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Icon(
+                Icons.attach_money_rounded,
+                size: 14,
+                color: colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                '\$${entry.pricePerLiter.toStringAsFixed(2)} per liter',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: colorScheme.onSurface.withValues(alpha: 0.8),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ];
   }
 
   void _showDeleteDialog(String entryId) {
