@@ -1,13 +1,12 @@
 import 'dart:convert';
 import 'dart:developer';
 import 'package:http/http.dart' as http;
+import '../constraints.dart';
 import '../models/fuel_entry.dart';
 import './auth_service.dart';
 import './fuel_storage_service.dart';
 
 class SyncService {
-  static const String _baseUrl = 'http://localhost:3002';
-
   static Future<void> syncWithServer() async {
     final userId = await AuthService.getUserId();
     if (userId == null) {
@@ -48,7 +47,7 @@ class SyncService {
       print('Sync request body: $requestBody');
 
       final response = await http.post(
-        Uri.parse('$_baseUrl/api/fuel-entries/bulk'),
+        Uri.parse('$baseUrl/api/fuel-entries/bulk'),
         headers: headers,
         body: requestBody,
       );
@@ -84,7 +83,7 @@ class SyncService {
 
     try {
       final headers = AuthService.getAuthHeaders();
-      final response = await http.get(Uri.parse('$_baseUrl/api/fuel-entries/$userId'), headers: headers);
+      final response = await http.get(Uri.parse('$baseUrl/api/fuel-entries/$userId'), headers: headers);
 
       if (response.statusCode == 200) {
         final List<dynamic> entriesJson = json.decode(response.body);
@@ -172,7 +171,7 @@ class SyncService {
       // Debug: Print the request body
       print('Upload entry request body: $requestBody');
 
-      final response = await http.post(Uri.parse('$_baseUrl/api/fuel-entries'), headers: headers, body: requestBody);
+      final response = await http.post(Uri.parse('$baseUrl/api/fuel-entries'), headers: headers, body: requestBody);
 
       print('Upload entry response: ${response.statusCode} - ${response.body}');
 
@@ -202,7 +201,7 @@ class SyncService {
 
     try {
       final headers = AuthService.getAuthHeaders();
-      final response = await http.delete(Uri.parse('$_baseUrl/api/fuel-entries/$userId/$entryId'), headers: headers);
+      final response = await http.delete(Uri.parse('$baseUrl/api/fuel-entries/$userId/$entryId'), headers: headers);
 
       if (response.statusCode != 200 && response.statusCode != 204) {
         final errorData = json.decode(response.body);
@@ -225,7 +224,7 @@ class SyncService {
     try {
       final headers = AuthService.getAuthHeaders();
       final response = await http.post(
-        Uri.parse('$_baseUrl/api/fuel-entries/bulk/delete'),
+        Uri.parse('$baseUrl/api/fuel-entries/bulk/delete'),
         headers: headers,
         body: json.encode({'user_id': userId, 'entry_ids': entryIds}),
       );
@@ -251,7 +250,7 @@ class SyncService {
     try {
       final headers = AuthService.getAuthHeaders();
       final response = await http.put(
-        Uri.parse('$_baseUrl/api/fuel-entries/$userId/${entry.id}'),
+        Uri.parse('$baseUrl/api/fuel-entries/$userId/${entry.id}'),
         headers: headers,
         body: json.encode({
           'liters': entry.liters,
@@ -282,7 +281,7 @@ class SyncService {
 
     try {
       final headers = AuthService.getAuthHeaders();
-      final response = await http.get(Uri.parse('$_baseUrl/api/fuel-entries/$userId/$entryId'), headers: headers);
+      final response = await http.get(Uri.parse('$baseUrl/api/fuel-entries/$userId/$entryId'), headers: headers);
 
       if (response.statusCode == 200) {
         final entryJson = json.decode(response.body);

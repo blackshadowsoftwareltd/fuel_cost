@@ -2,35 +2,25 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../constraints.dart';
+
 class AuthService {
-  static const String _baseUrl = 'http://localhost:3001';
   static const String _userIdKey = 'user_id';
   static const String _userEmailKey = 'user_email';
 
-  static Future<Map<String, dynamic>> signIn({
-    required String email,
-    required String password,
-  }) async {
+  static Future<Map<String, dynamic>> signIn({required String email, required String password}) async {
     try {
       final response = await http.post(
-        Uri.parse('$_baseUrl/api/auth/signin'),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: json.encode({
-          'email': email,
-          'password': password,
-        }),
+        Uri.parse('$baseUrl/api/auth/signin'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'email': email, 'password': password}),
       );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        
-        await _saveAuthData(
-          userId: data['user_id']?.toString() ?? '',
-          email: email,
-        );
-        
+
+        await _saveAuthData(userId: data['user_id']?.toString() ?? '', email: email);
+
         return data;
       } else {
         final errorData = json.decode(response.body);
@@ -44,10 +34,7 @@ class AuthService {
     }
   }
 
-  static Future<void> _saveAuthData({
-    required String userId,
-    required String email,
-  }) async {
+  static Future<void> _saveAuthData({required String userId, required String email}) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_userIdKey, userId);
     await prefs.setString(_userEmailKey, email);
@@ -76,8 +63,6 @@ class AuthService {
   }
 
   static Map<String, String> getAuthHeaders() {
-    return {
-      'Content-Type': 'application/json',
-    };
+    return {'Content-Type': 'application/json'};
   }
 }
