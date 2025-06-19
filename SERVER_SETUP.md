@@ -47,6 +47,9 @@ The server code is available at: https://github.com/blackshadowsoftwareltd/fuel_
 
 - `POST /api/auth/signin` - Authentication (auto-signup)
 - `POST /api/fuel-entries/bulk` - Bulk upload fuel entries
+- `DELETE /api/fuel-entries/{userId}/{entryId}` - Delete individual fuel entry
+- `GET /api/fuel-entries/{userId}` - Download user's fuel entries
+- `POST /api/fuel-entries` - Upload single fuel entry
 
 ## Features Added
 
@@ -57,5 +60,27 @@ The server code is available at: https://github.com/blackshadowsoftwareltd/fuel_
 ✅ Success/error feedback  
 ✅ Bulk data upload to server  
 ✅ Proper error handling for network issues  
+✅ Individual fuel entry deletion with server sync  
+✅ Graceful fallback when server delete endpoint is not available  
+
+## Delete Functionality
+
+The app includes delete functionality that:
+- Always deletes entries locally (guaranteed to work)
+- Attempts to delete from server if user is authenticated
+- Provides clear feedback about what succeeded/failed
+- Gracefully handles missing server endpoints
+
+## Server Requirements
+
+For full functionality, your server needs to implement the DELETE endpoint:
+```
+DELETE /api/fuel-entries/{userId}/{entryId}
+```
+
+If this endpoint is not implemented, the app will:
+- Still delete entries locally
+- Show a warning that server sync failed
+- Continue working normally
 
 The sync functionality is now ready to use once you configure the server URL!

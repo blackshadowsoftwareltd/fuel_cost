@@ -201,15 +201,40 @@ class SyncService {
 
     try {
       final headers = AuthService.getAuthHeaders();
-      final response = await http.delete(Uri.parse('$baseUrl/api/fuel-entries/$userId/$entryId'), headers: headers);
+      print('Attempting to delete entry: $entryId for user: $userId');
+      print('DELETE URL: $baseUrl/api/fuel-entries/$userId/$entryId');
+      
+      final response = await http.delete(
+        Uri.parse('$baseUrl/api/fuel-entries/$userId/$entryId'), 
+        headers: headers,
+      );
 
-      if (response.statusCode != 200 && response.statusCode != 204) {
-        final errorData = json.decode(response.body);
-        throw Exception(errorData['message'] ?? 'Failed to delete entry from server');
+      print('Delete response: ${response.statusCode} - ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        // Success - entry deleted from server
+        return;
+      } else if (response.statusCode == 404) {
+        // Entry not found on server - this is OK, it means it was already deleted or never synced
+        print('Entry not found on server, treating as successful delete');
+        return;
+      } else if (response.statusCode == 405) {
+        // Method not allowed - server doesn't support delete endpoint
+        throw Exception('Server does not support delete functionality yet. Entry removed locally only.');
+      } else {
+        // Other error
+        String errorMessage = 'Failed to delete entry from server';
+        try {
+          final errorData = json.decode(response.body);
+          errorMessage = errorData['message'] ?? errorData.toString();
+        } catch (e) {
+          errorMessage = 'Server error: ${response.statusCode}';
+        }
+        throw Exception(errorMessage);
       }
     } catch (e) {
       if (e.toString().contains('SocketException') || e.toString().contains('TimeoutException')) {
-        throw Exception('Cannot connect to server. Please check your internet connection.');
+        throw Exception('Cannot connect to server. Entry deleted locally only.');
       }
       rethrow;
     }

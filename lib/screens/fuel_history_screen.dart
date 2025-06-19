@@ -105,24 +105,62 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> with TickerProvid
 
   Future<void> _deleteEntry(String id) async {
     try {
+      // First delete locally (this should always work)
       await FuelStorageService.deleteFuelEntry(id);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 12),
+                const Text('Entry deleted locally'),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
 
-      // Try to delete from server if user is authenticated
+      // Then try to delete from server if user is authenticated
       final isAuthenticated = await AuthService.isAuthenticated();
       if (isAuthenticated) {
         try {
           await SyncService.deleteEntryFromServer(id);
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Entry deleted locally and from server!'), backgroundColor: Colors.green),
+              SnackBar(
+                content: Row(
+                  children: [
+                    const Icon(Icons.cloud_done, color: Colors.white),
+                    const SizedBox(width: 12),
+                    const Text('Entry also removed from server!'),
+                  ],
+                ),
+                backgroundColor: Colors.green,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
             );
           }
         } catch (e) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Entry deleted locally. Server delete failed: $e'),
+                content: Row(
+                  children: [
+                    const Icon(Icons.warning, color: Colors.white),
+                    const SizedBox(width: 12),
+                    Expanded(child: Text('Server sync failed: ${e.toString().replaceFirst('Exception: ', '')}')),
+                  ],
+                ),
                 backgroundColor: Colors.orange,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                duration: Duration(seconds: 4),
               ),
             );
           }
@@ -130,18 +168,40 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> with TickerProvid
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Entry deleted locally! Sign in to sync deletion with server.'),
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.info, color: Colors.white),
+                  const SizedBox(width: 12),
+                  const Text('Sign in to sync deletion with server'),
+                ],
+              ),
               backgroundColor: Colors.blue,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
           );
         }
       }
 
+      // Reload data to refresh the UI
       await _loadData();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error deleting entry: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(child: Text('Error deleting entry: $e')),
+              ],
+            ),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
       }
     }
   }
