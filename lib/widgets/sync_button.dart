@@ -5,12 +5,7 @@ class SyncButton extends StatelessWidget {
   final bool isAuthenticated;
   final VoidCallback? onPressed;
 
-  const SyncButton({
-    super.key,
-    required this.isSyncing,
-    required this.isAuthenticated,
-    required this.onPressed,
-  });
+  const SyncButton({super.key, required this.isSyncing, required this.isAuthenticated, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
@@ -18,39 +13,29 @@ class SyncButton extends StatelessWidget {
     final buttonText = isSyncing
         ? 'Syncing...'
         : isAuthenticated
-            ? 'Sync Now'
-            : 'Sign In for Sync';
+        ? 'Sync Now'
+        : 'Sign In for Sync';
     final subtitle = isSyncing
         ? 'Please wait while syncing'
         : isAuthenticated
-            ? 'Sync with cloud storage'
-            : 'Authenticate to sync data';
-    
+        ? 'Sync with cloud storage'
+        : 'Authenticate to sync data';
+
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8),
+      margin: const EdgeInsets.symmetric(vertical: 2),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
         gradient: LinearGradient(
           colors: [
-            color.withValues(alpha: 0.85),
-            color.withValues(alpha: 0.7),
+            const Color.fromARGB(255, 255, 132, 0).withValues(alpha: 0.9),
+            const Color.fromARGB(255, 255, 115, 0).withValues(alpha: 0.8),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.4),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
-            spreadRadius: -3,
-          ),
-          BoxShadow(
-            color: color.withValues(alpha: 0.2),
-            blurRadius: 25,
-            offset: const Offset(0, 15),
-            spreadRadius: -5,
-          ),
+          BoxShadow(color: color.withValues(alpha: 0.7), blurRadius: 15, offset: const Offset(0, 8), spreadRadius: -3),
+          BoxShadow(color: color.withValues(alpha: 0.6), blurRadius: 25, offset: const Offset(0, 15), spreadRadius: -5),
         ],
       ),
       child: Material(
@@ -67,16 +52,9 @@ class SyncButton extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.25),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.4),
-                      width: 1,
-                    ),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 1),
                     boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
+                      BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8, offset: const Offset(0, 2)),
                     ],
                   ),
                   child: isSyncing

@@ -21,36 +21,23 @@ class ActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8),
+      margin: const EdgeInsets.symmetric(vertical: 2),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
         gradient: isPrimary
             ? LinearGradient(
-                colors: [color, color.withValues(alpha: 0.8)],
+                colors: [color, color.withValues(alpha: 0.9)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               )
             : LinearGradient(
-                colors: [
-                  color.withValues(alpha: 0.85),
-                  color.withValues(alpha: 0.7),
-                ],
+                colors: [color, color.withValues(alpha: 0.9)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
         boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.4),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
-            spreadRadius: -3,
-          ),
-          BoxShadow(
-            color: color.withValues(alpha: 0.2),
-            blurRadius: 25,
-            offset: const Offset(0, 15),
-            spreadRadius: -5,
-          ),
+          BoxShadow(color: color.withValues(alpha: 0.4), blurRadius: 15, offset: const Offset(0, 8), spreadRadius: -3),
+          BoxShadow(color: color.withValues(alpha: 0.2), blurRadius: 25, offset: const Offset(0, 15), spreadRadius: -5),
         ],
       ),
       child: Material(
@@ -67,23 +54,12 @@ class ActionButton extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.25),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.4),
-                      width: 1,
-                    ),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 1),
                     boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
+                      BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8, offset: const Offset(0, 2)),
                     ],
                   ),
-                  child: Icon(
-                    icon,
-                    size: 24,
-                    color: Colors.white,
-                  ),
+                  child: Icon(icon, size: 24, color: Colors.white),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -102,20 +78,12 @@ class ActionButton extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         subtitle,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.white.withValues(alpha: 0.9),
-                          fontWeight: FontWeight.w500,
-                        ),
+                        style: TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w500),
                       ),
                     ],
                   ),
                 ),
-                Icon(
-                  Icons.arrow_forward_ios_rounded,
-                  size: 16,
-                  color: Colors.white.withValues(alpha: 0.8),
-                ),
+                Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Colors.white.withValues(alpha: 0.8)),
               ],
             ),
           ),

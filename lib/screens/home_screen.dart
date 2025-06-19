@@ -39,43 +39,25 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     super.initState();
 
     // Initialize animation controllers
-    _fadeAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
-    _slideAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 600),
-      vsync: this,
-    );
-    _staggeredAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 1200),
-      vsync: this,
-    );
+    _fadeAnimationController = AnimationController(duration: const Duration(milliseconds: 800), vsync: this);
+    _slideAnimationController = AnimationController(duration: const Duration(milliseconds: 600), vsync: this);
+    _staggeredAnimationController = AnimationController(duration: const Duration(milliseconds: 1200), vsync: this);
 
     // Initialize animations
     _fadeAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _fadeAnimationController,
-      curve: Curves.easeInOut,
-    ));
+    ).animate(CurvedAnimation(parent: _fadeAnimationController, curve: Curves.easeInOut));
 
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.3),
       end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _slideAnimationController,
-      curve: Curves.easeOutCubic,
-    ));
+    ).animate(CurvedAnimation(parent: _slideAnimationController, curve: Curves.easeOutCubic));
 
     _staggeredAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _staggeredAnimationController,
-      curve: Curves.easeOutCubic,
-    ));
+    ).animate(CurvedAnimation(parent: _staggeredAnimationController, curve: Curves.easeOutCubic));
 
     _loadSummaryData();
     _checkAuthStatus();
@@ -136,11 +118,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Future<void> _handleSync() async {
     if (!_isAuthenticated) {
       // Navigate to sign in screen
-      final result = await Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const AuthScreen()),
-      );
-      
+      final result = await Navigator.push(context, MaterialPageRoute(builder: (context) => const AuthScreen()));
+
       // If sign in was successful, immediately sync
       if (result == true) {
         await _checkAuthStatus();
@@ -162,22 +141,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     try {
       await SyncService.fullSync();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Data synced successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Data synced successfully!'), backgroundColor: Colors.green));
         _loadSummaryData();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Sync failed: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Sync failed: $e'), backgroundColor: Colors.red));
       }
     } finally {
       if (mounted) {
@@ -234,7 +207,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             children: [
                               Text(
                                 'Fuel Cost',
-                                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.grey.shade800),
+                                style: TextStyle(
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey.shade800,
+                                ),
                               ),
                               Text(
                                 'Monitor your fuel efficiency',
@@ -299,7 +276,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
                   ),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 10),
 
                   // Stats Cards with staggered animation
                   StaggeredAnimationWrapper(
@@ -349,7 +326,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
                   ),
 
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 5),
 
                   // Action Buttons section with staggered animation
                   StaggeredAnimationWrapper(
@@ -360,7 +337,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.grey.shade800),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 5),
 
                   StaggeredAnimationWrapper(
                     index: 2,
@@ -373,7 +350,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         await Navigator.push(context, MaterialPageRoute(builder: (context) => const AddFuelScreen()));
                         _loadSummaryData();
                       },
-                      color: const Color(0xFF2196F3),
+                      color: const Color.fromARGB(255, 46, 161, 254),
                       isPrimary: true,
                     ),
                   ),
@@ -386,21 +363,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       title: 'View Fuel History',
                       subtitle: _getButtonSubtitle('View Fuel History'),
                       onPressed: () async {
-                        await Navigator.push(context, MaterialPageRoute(builder: (context) => const FuelHistoryScreen()));
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const FuelHistoryScreen()),
+                        );
                         _loadSummaryData();
                       },
-                      color: const Color(0xFF4CAF50),
+                      color: const Color.fromARGB(255, 11, 141, 53),
                     ),
                   ),
 
                   StaggeredAnimationWrapper(
                     index: 4,
                     animation: _staggeredAnimation,
-                    child: SyncButton(
-                      isSyncing: _isSyncing,
-                      isAuthenticated: _isAuthenticated,
-                      onPressed: _handleSync,
-                    ),
+                    child: SyncButton(isSyncing: _isSyncing, isAuthenticated: _isAuthenticated, onPressed: _handleSync),
                   ),
                 ],
               ),
