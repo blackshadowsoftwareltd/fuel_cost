@@ -19,15 +19,13 @@ class StaggeredAnimationWrapper extends StatelessWidget {
     return AnimatedBuilder(
       animation: animation,
       builder: (context, _) {
-        final animationDelay = index * delay;
-        final delayedValue = (animation.value - animationDelay).clamp(0.0, 1.0);
-        
+        final od = index * delay;
+        final odv = (animation.value - od).clamp(0.0, 1.0);
+
+        final opv = (animation.value - .1).clamp(0.0, 1.0);
         return Transform.translate(
-          offset: Offset(0, 30 * (1 - delayedValue)),
-          child: Opacity(
-            opacity: delayedValue,
-            child: child,
-          ),
+          offset: Offset(0, 30 * (1 - odv)),
+          child: Opacity(opacity: opv, child: child),
         );
       },
     );

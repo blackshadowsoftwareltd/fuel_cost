@@ -132,7 +132,6 @@ class _AddFuelScreenState extends State<AddFuelScreen> with TickerProviderStateM
     }
   }
 
-
   @override
   void dispose() {
     _fadeAnimationController.dispose();
@@ -144,8 +143,6 @@ class _AddFuelScreenState extends State<AddFuelScreen> with TickerProviderStateM
     _odometerController.dispose();
     super.dispose();
   }
-
-
 
   Future<void> _saveFuelEntry() async {
     if (!_formKey.currentState!.validate()) return;
@@ -278,7 +275,7 @@ class _AddFuelScreenState extends State<AddFuelScreen> with TickerProviderStateM
                       ),
                     ),
 
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 25),
 
                     // Form Fields with scale animation
                     ScaleTransition(
@@ -322,7 +319,7 @@ class _AddFuelScreenState extends State<AddFuelScreen> with TickerProviderStateM
                                   },
                                 ),
                               ),
-                              const SizedBox(height: 20),
+                              const SizedBox(height: 10),
                               StaggeredAnimationWrapper(
                                 index: 1,
                                 animation: _staggeredAnimation,
@@ -344,7 +341,7 @@ class _AddFuelScreenState extends State<AddFuelScreen> with TickerProviderStateM
                                   },
                                 ),
                               ),
-                              const SizedBox(height: 20),
+                              const SizedBox(height: 10),
                               StaggeredAnimationWrapper(
                                 index: 2,
                                 animation: _staggeredAnimation,
@@ -379,7 +376,7 @@ class _AddFuelScreenState extends State<AddFuelScreen> with TickerProviderStateM
                       ),
                     ),
 
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 5),
 
                     // Preview Cards with staggered animations
                     if (_litersController.text.isNotEmpty && _priceController.text.isNotEmpty)
@@ -397,7 +394,6 @@ class _AddFuelScreenState extends State<AddFuelScreen> with TickerProviderStateM
                             ),
 
                             if (_calculationDetails != null) ...[
-                              const SizedBox(height: 16),
                               StaggeredAnimationWrapper(
                                 index: 4,
                                 delay: 0.15,
@@ -430,20 +426,18 @@ class _AddFuelScreenState extends State<AddFuelScreen> with TickerProviderStateM
                           width: double.infinity,
                           height: 60,
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(20),
-                            gradient: const LinearGradient(
-                              colors: [Color.fromARGB(255, 64, 169, 255), Color.fromARGB(255, 92, 225, 255)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
+                            color: Colors.white.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFF2196F3).withValues(alpha: 0.4),
-                                blurRadius: 12,
-                                offset: const Offset(0, 6),
+                                color: Colors.black.withValues(alpha: 0.1),
+                                blurRadius: 20,
+                                offset: const Offset(0, 10),
                               ),
                             ],
                           ),
+
                           child: ElevatedButton(
                             onPressed: _isLoading ? null : _saveFuelEntry,
                             style: ElevatedButton.styleFrom(
