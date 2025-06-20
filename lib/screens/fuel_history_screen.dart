@@ -17,9 +17,6 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> with TickerProvid
   List<FuelEntry> _entries = [];
   bool _isLoading = true;
   bool _isSyncing = false;
-  double _totalCost = 0.0;
-  double _totalLiters = 0.0;
-  double _averagePrice = 0.0;
   String _currency = '\$';
 
   late AnimationController _syncAnimationController;
@@ -67,15 +64,9 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> with TickerProvid
 
     try {
       final entries = await FuelStorageService.getFuelEntries();
-      final totalCost = await FuelStorageService.getTotalFuelCost();
-      final totalLiters = await FuelStorageService.getTotalLiters();
-      final averagePrice = await FuelStorageService.getAveragePricePerLiter();
 
       setState(() {
         _entries = entries..sort((a, b) => b.dateTime.compareTo(a.dateTime));
-        _totalCost = totalCost;
-        _totalLiters = totalLiters;
-        _averagePrice = averagePrice;
       });
 
       _cardAnimationController.forward();
@@ -301,101 +292,10 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> with TickerProvid
           : RefreshIndicator(
               onRefresh: _loadData,
               child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
                 slivers: [
                   const SliverToBoxAdapter(child: SizedBox(height: 20)),
-                  SliverToBoxAdapter(
-                    child: AnimatedBuilder(
-                      animation: _cardSlideAnimation,
-                      builder: (context, child) {
-                        return Transform.translate(
-                          offset: Offset(0, 50 * (1 - _cardSlideAnimation.value)),
-                          child: Opacity(
-                            opacity: _cardSlideAnimation.value,
-                            child: Container(
-                              margin: EdgeInsets.symmetric(
-                                horizontal: MediaQuery.of(context).size.width < 400 ? 12 : 16,
-                                vertical: MediaQuery.of(context).size.width < 400 ? 12 : 16,
-                              ),
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [Color(0xFF667eea), Color(0xFF764ba2)],
-                                ),
-                                borderRadius: BorderRadius.circular(24),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: const Color(0xFF667eea).withValues(alpha: 0.4),
-                                    blurRadius: 25,
-                                    offset: const Offset(0, 15),
-                                    spreadRadius: -5,
-                                  ),
-                                ],
-                              ),
-                              child: Padding(
-                                padding: EdgeInsets.all(MediaQuery.of(context).size.width < 400 ? 20 : 28),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.only(bottom: 12),
-                                      child: Row(
-                                        children: [
-                                          Container(
-                                            padding: const EdgeInsets.all(12),
-                                            decoration: BoxDecoration(
-                                              color: Colors.white.withValues(alpha: 0.2),
-                                              borderRadius: BorderRadius.circular(16),
-                                              border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1),
-                                            ),
-                                            child: Icon(
-                                              Icons.analytics_rounded,
-                                              color: Colors.white,
-                                              size: MediaQuery.of(context).size.width < 400 ? 24 : 28,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 16),
-                                          Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                'Summary',
-                                                style: TextStyle(
-                                                  fontSize: MediaQuery.of(context).size.width < 400 ? 22 : 26,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: Colors.white,
-                                                  letterSpacing: 0.5,
-                                                ),
-                                              ),
-                                              Text(
-                                                'Your fuel statistics',
-                                                style: TextStyle(
-                                                  fontSize: 14,
-                                                  color: Colors.white.withValues(alpha: 0.8),
-                                                  fontWeight: FontWeight.w400,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(height: 20),
-                                    FuelSummaryStats(
-                                      totalCost: _totalCost,
-                                      totalLiters: _totalLiters,
-                                      averagePrice: _averagePrice,
-                                      currency: _currency,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
+                  
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: EdgeInsets.symmetric(horizontal: MediaQuery.of(context).size.width < 400 ? 12 : 16),
@@ -448,6 +348,7 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> with TickerProvid
             ),
     );
   }
+
 
 
 

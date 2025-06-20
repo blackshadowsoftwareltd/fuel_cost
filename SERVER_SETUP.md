@@ -64,6 +64,10 @@ The server code is available at: https://github.com/blackshadowsoftwareltd/fuel_
 ✅ Graceful fallback when server delete endpoint is not available  
 ✅ Last sync time tracking for upload and download operations  
 ✅ User-friendly sync time display (Just now, X minutes ago, etc.)  
+✅ Interactive charts and analytics in fuel history  
+✅ Multiple chart types: Cost trends, Fuel consumption, Efficiency  
+✅ Chart type selector with smooth animations  
+✅ Trend analysis and quick statistics  
 
 ## Delete Functionality
 
@@ -98,5 +102,28 @@ The app now tracks and displays the last sync time:
 - Stored in SharedPreferences using ISO 8601 format
 - Automatically updated on successful sync operations
 - Gracefully handles missing or corrupted sync time data
+
+## Charts and Analytics Feature
+
+The app now includes comprehensive analytics and charts:
+
+### Chart Types Available:
+1. **Cost Trends** - Shows fuel cost over time with trend analysis
+2. **Fuel Consumption** - Displays volume of fuel purchased per entry
+3. **Efficiency Tracking** - Tracks fuel efficiency (km/L) between fill-ups
+
+### Chart Features:
+- **Interactive Selection**: Switch between chart types with animated buttons
+- **Smart Display**: Only shows when sufficient data is available (2+ entries)
+- **Trend Analysis**: Automatic trend detection and cost direction indicators
+- **Beautiful Design**: Cupertino-style design with smooth animations
+- **Quick Stats**: Total, average, and entry count displayed below charts
+- **Responsive Layout**: Adapts to different screen sizes
+
+### Technical Implementation:
+- Uses `fl_chart` package for high-performance charting
+- Integrated into fuel history screen with animations
+- Data processed from existing fuel entries
+- No additional server requirements
 
 The sync functionality is now ready to use once you configure the server URL!

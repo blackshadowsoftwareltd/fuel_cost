@@ -101,6 +101,23 @@ class FuelEntryCard extends StatelessWidget {
                     ),
                   ],
                 ),
+                if (entry.odometerReading != null) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(Icons.speed_rounded, size: 16, color: colorScheme.onSurface.withValues(alpha: 0.6)),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Odometer: ${entry.odometerReading!.toStringAsFixed(0)} km',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: colorScheme.onSurface.withValues(alpha: 0.8),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -222,6 +239,23 @@ class FuelEntryCard extends StatelessWidget {
               ),
             ],
           ),
+          if (entry.odometerReading != null) ...[
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Icon(Icons.speed_rounded, size: 14, color: colorScheme.onSurface.withValues(alpha: 0.6)),
+                const SizedBox(width: 6),
+                Text(
+                  'Odometer: ${entry.odometerReading!.toStringAsFixed(0)} km',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: colorScheme.onSurface.withValues(alpha: 0.8),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     ];
@@ -238,11 +272,12 @@ class FuelEntryCard extends StatelessWidget {
       builder: (context, child) {
         final delay = index * 0.1;
         final delayedValue = (animation.value - delay).clamp(0.0, 1.0);
+        final dop = animation.value.clamp(0.0, 1.0);
 
         return Transform.translate(
           offset: Offset(0, 30 * (1 - delayedValue)),
           child: Opacity(
-            opacity: delayedValue,
+            opacity: dop,
             child: Container(
               margin: EdgeInsets.only(
                 left: MediaQuery.of(context).size.width < 400 ? 12 : 16,

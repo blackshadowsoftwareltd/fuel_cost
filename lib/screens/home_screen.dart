@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../widgets/widgets.dart';
+import '../models/fuel_entry.dart';
 import '../services/fuel_storage_service.dart';
 import '../services/auth_service.dart';
 import '../services/sync_service.dart';
@@ -23,6 +24,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int _totalEntries = 0;
   double? _averageMileage;
   double? _currentOdometer;
+  double _lastTripMileage = 0.0;
+  double _overallMileage = 0.0;
+  double _totalDistance = 0.0;
+  List<FuelEntry> _entries = [];
   bool _isAuthenticated = false;
   bool _isSyncing = false;
   String _currency = '\$';
@@ -96,12 +101,61 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       final averageMileage = await FuelStorageService.getAverageMileage();
       final currentOdometer = await FuelStorageService.getCurrentOdometer();
 
+      // Calculate mileage metrics and total distance
+      final sortedEntries = List<FuelEntry>.from(entries)..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+
+      double lastTripMileage = 0.0;
+      double overallMileage = 0.0;
+      double totalDistance = 0.0;
+
+      if (sortedEntries.length > 1) {
+        final mileages = <double>[];
+
+        // Calculate total distance from all trips
+        for (int i = 1; i < sortedEntries.length; i++) {
+          if (sortedEntries[i].odometerReading != null && sortedEntries[i - 1].odometerReading != null) {
+            final distance = sortedEntries[i].odometerReading! - sortedEntries[i - 1].odometerReading!;
+            if (distance > 0) {
+              totalDistance += distance;
+              final mileage = distance / sortedEntries[i].liters;
+              mileages.add(mileage);
+            }
+          }
+        }
+
+        if (totalDistance > 0) {
+          // Last trip mileage: distance of last trip / (fuel consumed - skip last entry fuel)
+          if (sortedEntries.length >= 2) {
+            final lastEntry = sortedEntries.last;
+            final secondLastEntry = sortedEntries[sortedEntries.length - 2];
+            
+            if (lastEntry.odometerReading != null && secondLastEntry.odometerReading != null) {
+              final lastTripDistance = lastEntry.odometerReading! - secondLastEntry.odometerReading!;
+              if (lastTripDistance > 0) {
+                // Skip the last entry fuel, use the second last entry fuel for this trip
+                lastTripMileage = lastTripDistance / secondLastEntry.liters;
+              }
+            }
+          }
+
+          // Overall mileage: total distance / (total fuel - last entry fuel)
+          final totalFuelExcludingLast = totalLiters - sortedEntries.last.liters;
+          if (totalFuelExcludingLast > 0) {
+            overallMileage = totalDistance / totalFuelExcludingLast;
+          }
+        }
+      }
+
       setState(() {
         _totalCost = totalCost;
         _totalLiters = totalLiters;
         _totalEntries = entries.length;
         _averageMileage = averageMileage;
         _currentOdometer = currentOdometer;
+        _lastTripMileage = lastTripMileage;
+        _overallMileage = overallMileage;
+        _totalDistance = totalDistance;
+        _entries = entries..sort((a, b) => b.dateTime.compareTo(a.dateTime));
       });
     } catch (e) {
       if (mounted) {
@@ -182,6 +236,38 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       default:
         return 'Quick action';
     }
+  }
+
+  Widget _buildSummaryLine({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
+          ),
+          child: Icon(icon, color: color, size: 18),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Colors.grey.shade700),
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color),
+        ),
+      ],
+    );
   }
 
   @override
@@ -289,61 +375,205 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
                   ),
 
+                  // // Stats Cards with staggered animation
+                  // StaggeredAnimationWrapper(
+                  //   index: 0,
+                  //   animation: _staggeredAnimation,
+                  //   child: GridView.count(
+                  //     shrinkWrap: true,
+                  //     physics: const NeverScrollableScrollPhysics(),
+                  //     crossAxisCount: 2,
+                  //     mainAxisSpacing: 12,
+                  //     crossAxisSpacing: 12,
+                  //     childAspectRatio: 1.2,
+                  //     children: [
+                  //       StatCard(
+                  //         icon: Icons.attach_money,
+                  //         title: 'Total Spent',
+                  //         value: '$_currency${_totalCost.toStringAsFixed(2)}',
+                  //         color: Colors.red,
+                  //         backgroundColor: const Color(0xFFE91E63),
+                  //         onTap: () async {
+                  //           await Navigator.push(
+                  //             context,
+                  //             MaterialPageRoute(builder: (context) => const FuelHistoryScreen()),
+                  //           );
+                  //           _loadSummaryData();
+                  //           _loadLastSyncTime();
+                  //         },
+                  //       ),
+                  //       StatCard(
+                  //         icon: Icons.local_gas_station,
+                  //         title: 'Total Liters',
+                  //         value: '${_totalLiters.toStringAsFixed(1)}L',
+                  //         color: Colors.blue,
+                  //         backgroundColor: const Color(0xFF2196F3),
+                  //         onTap: () async {
+                  //           await Navigator.push(
+                  //             context,
+                  //             MaterialPageRoute(builder: (context) => const FuelHistoryScreen()),
+                  //           );
+                  //           _loadSummaryData();
+                  //           _loadLastSyncTime();
+                  //         },
+                  //       ),
+                  //       StatCard(
+                  //         icon: Icons.list_alt,
+                  //         title: 'Fuel Entries',
+                  //         value: '$_totalEntries',
+                  //         color: Colors.green,
+                  //         backgroundColor: const Color(0xFF4CAF50),
+                  //         onTap: () async {
+                  //           await Navigator.push(
+                  //             context,
+                  //             MaterialPageRoute(builder: (context) => const FuelHistoryScreen()),
+                  //           );
+                  //           _loadSummaryData();
+                  //           _loadLastSyncTime();
+                  //         },
+                  //       ),
+                  //       StatCard(
+                  //         icon: _averageMileage != null ? Icons.trending_up : Icons.speed,
+                  //         title: _averageMileage != null ? 'Average Mileage' : 'Current Odometer',
+                  //         value: _averageMileage != null
+                  //             ? '${_averageMileage!.toStringAsFixed(1)} km/L'
+                  //             : _currentOdometer != null
+                  //             ? '${_currentOdometer!.toStringAsFixed(0)} km'
+                  //             : 'No data',
+                  //         color: Colors.orange,
+                  //         backgroundColor: const Color(0xFFFF9800),
+                  //         onTap: _averageMileage != null
+                  //             ? () async {
+                  //                 await Navigator.push(
+                  //                   context,
+                  //                   MaterialPageRoute(builder: (context) => const FuelHistoryScreen()),
+                  //                 );
+                  //                 _loadSummaryData();
+                  //                 _loadLastSyncTime();
+                  //               }
+                  //             : null,
+                  //       ),
+                  //     ],
+                  //   ),
+                  // ),
                   const SizedBox(height: 10),
 
-                  // Stats Cards with staggered animation
+                  // Summary Section
                   StaggeredAnimationWrapper(
-                    index: 0,
+                    index: 1,
                     animation: _staggeredAnimation,
-                    child: GridView.count(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      crossAxisCount: 2,
-                      mainAxisSpacing: 12,
-                      crossAxisSpacing: 12,
-                      childAspectRatio: 1.2,
-                      children: [
-                        StatCard(
-                          icon: Icons.attach_money,
-                          title: 'Total Spent',
-                          value: '$_currency${_totalCost.toStringAsFixed(2)}',
-                          color: Colors.red,
-                          backgroundColor: const Color(0xFFE91E63),
+                    child: Container(
+                      margin: EdgeInsets.symmetric(vertical: MediaQuery.of(context).size.width < 400 ? 8 : 10),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.08),
+                            blurRadius: 20,
+                            offset: const Offset(0, 8),
+                            spreadRadius: -4,
+                          ),
+                        ],
+                        border: Border.all(color: Colors.grey.withValues(alpha: 0.1), width: 0.5),
+                      ),
+                      child: Padding(
+                        padding: EdgeInsets.all(MediaQuery.of(context).size.width < 400 ? 20 : 24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Header
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF667eea).withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: const Color(0xFF667eea).withValues(alpha: 0.2), width: 1),
+                                  ),
+                                  child: Icon(Icons.analytics_rounded, color: const Color(0xFF667eea), size: 20),
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  'Summary',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.grey.shade800,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 20),
+
+                            // Cost Line
+                            _buildSummaryLine(
+                              icon: Icons.payments_rounded,
+                              label: 'Total Cost',
+                              value: '$_currency${_totalCost.toStringAsFixed(2)}',
+                              color: const Color(0xFFE91E63),
+                            ),
+
+                            const SizedBox(height: 16),
+
+                            // Liters Line
+                            _buildSummaryLine(
+                              icon: Icons.local_gas_station_rounded,
+                              label: 'Total Liters',
+                              value: '${_totalLiters.toStringAsFixed(1)}L',
+                              color: const Color(0xFF2196F3),
+                            ),
+
+                            const SizedBox(height: 16),
+
+                            // Distance Line
+                            _buildSummaryLine(
+                              icon: Icons.route_rounded,
+                              label: 'Total Distance',
+                              value: _totalDistance > 0 ? '${_totalDistance.toStringAsFixed(0)} km' : 'N/A',
+                              color: const Color(0xFFFF9800),
+                            ),
+
+                            const SizedBox(height: 16),
+
+                            // Last Trip Mileage Line
+                            _buildSummaryLine(
+                              icon: Icons.directions_car_rounded,
+                              label: 'Last Trip Mileage',
+                              value: _lastTripMileage > 0 ? '${_lastTripMileage.toStringAsFixed(1)} km/L' : 'N/A',
+                              color: const Color(0xFF4CAF50),
+                            ),
+
+                            const SizedBox(height: 16),
+
+                            // Overall Mileage Line
+                            _buildSummaryLine(
+                              icon: Icons.trending_up_rounded,
+                              label: 'Overall Mileage',
+                              value: _overallMileage > 0 ? '${_overallMileage.toStringAsFixed(1)} km/L' : 'N/A',
+                              color: const Color(0xFF9C27B0),
+                            ),
+                          ],
                         ),
-                        StatCard(
-                          icon: Icons.local_gas_station,
-                          title: 'Total Liters',
-                          value: '${_totalLiters.toStringAsFixed(1)}L',
-                          color: Colors.blue,
-                          backgroundColor: const Color(0xFF2196F3),
-                        ),
-                        StatCard(
-                          icon: Icons.list_alt,
-                          title: 'Fuel Entries',
-                          value: '$_totalEntries',
-                          color: Colors.green,
-                          backgroundColor: const Color(0xFF4CAF50),
-                        ),
-                        StatCard(
-                          icon: _averageMileage != null ? Icons.trending_up : Icons.speed,
-                          title: _averageMileage != null ? 'Average Mileage' : 'Current Odometer',
-                          value: _averageMileage != null
-                              ? '${_averageMileage!.toStringAsFixed(1)} km/L'
-                              : _currentOdometer != null
-                              ? '${_currentOdometer!.toStringAsFixed(0)} km'
-                              : 'No data',
-                          color: Colors.orange,
-                          backgroundColor: const Color(0xFFFF9800),
-                        ),
-                      ],
+                      ),
                     ),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  // Analytics Dashboard Section
+                  StaggeredAnimationWrapper(
+                    index: 2,
+                    animation: _staggeredAnimation,
+                    child: FuelChartDashboard(entries: _entries, currency: _currency),
                   ),
 
                   const SizedBox(height: 16),
 
                   // Action Buttons section with staggered animation
                   StaggeredAnimationWrapper(
-                    index: 1,
+                    index: 3,
                     animation: _staggeredAnimation,
                     child: Text(
                       'Quick Actions',
@@ -353,7 +583,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   const SizedBox(height: 12),
 
                   StaggeredAnimationWrapper(
-                    index: 2,
+                    index: 4,
                     animation: _staggeredAnimation,
                     child: ActionButton(
                       icon: Icons.add_circle,
@@ -370,7 +600,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
 
                   StaggeredAnimationWrapper(
-                    index: 3,
+                    index: 5,
                     animation: _staggeredAnimation,
                     child: ActionButton(
                       icon: Icons.history,
@@ -389,11 +619,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
 
                   StaggeredAnimationWrapper(
-                    index: 4,
+                    index: 6,
                     animation: _staggeredAnimation,
                     child: SyncButton(
-                      isSyncing: _isSyncing, 
-                      isAuthenticated: _isAuthenticated, 
+                      isSyncing: _isSyncing,
+                      isAuthenticated: _isAuthenticated,
                       onPressed: _handleSync,
                       lastSyncTime: _lastSyncTime,
                     ),

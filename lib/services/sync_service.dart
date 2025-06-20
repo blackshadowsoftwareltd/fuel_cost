@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:developer';
+import 'dart:developer'; 
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../constraints.dart';
@@ -11,6 +11,7 @@ class SyncService {
   static const String _lastUploadSyncKey = 'last_upload_sync_time';
   static const String _lastDownloadSyncKey = 'last_download_sync_time';
   static const String _lastFullSyncKey = 'last_full_sync_time';
+
   static Future<void> syncWithServer() async {
     final userId = await AuthService.getUserId();
     if (userId == null) {
@@ -42,7 +43,7 @@ class SyncService {
 
         return entryMap;
       }).toList();
-
+      log(bulkData.toString());
       // Upload bulk data to server
       final headers = AuthService.getAuthHeaders();
       final requestBody = json.encode({'user_id': userId, 'entries': bulkData});
@@ -92,7 +93,7 @@ class SyncService {
 
       if (response.statusCode == 200) {
         final List<dynamic> entriesJson = json.decode(response.body);
-        
+
         // Record download sync time
         await _setLastDownloadSync();
 
@@ -102,7 +103,7 @@ class SyncService {
             liters: double.parse(entryJson['liters']?.toString() ?? '0'),
             pricePerLiter: double.parse(entryJson['price_per_liter']?.toString() ?? '0'),
             totalCost: double.parse(entryJson['total_cost']?.toString() ?? '0'),
-            dateTime: DateTime.parse(entryJson['date_time']),
+            dateTime: DateTime.parse(entryJson['date_time']).toLocal(),
             odometerReading: entryJson['odometer_reading'] != null
                 ? double.parse(entryJson['odometer_reading'].toString())
                 : null,
@@ -148,7 +149,7 @@ class SyncService {
           await FuelStorageService.saveFuelEntry(serverEntry);
         }
       }
-      
+
       // Record full sync time
       await _setLastFullSync();
     } catch (e) {
@@ -217,11 +218,8 @@ class SyncService {
       final headers = AuthService.getAuthHeaders();
       print('Attempting to delete entry: $entryId for user: $userId');
       print('DELETE URL: $baseUrl/api/fuel-entries/$userId/$entryId');
-      
-      final response = await http.delete(
-        Uri.parse('$baseUrl/api/fuel-entries/$userId/$entryId'), 
-        headers: headers,
-      );
+
+      final response = await http.delete(Uri.parse('$baseUrl/api/fuel-entries/$userId/$entryId'), headers: headers);
 
       print('Delete response: ${response.statusCode} - ${response.body}');
 
@@ -399,10 +397,10 @@ class SyncService {
 
   static String formatLastSyncTime(DateTime? lastSync) {
     if (lastSync == null) return 'Never';
-    
+
     final now = DateTime.now();
     final difference = now.difference(lastSync);
-    
+
     if (difference.inMinutes < 1) {
       return 'Just now';
     } else if (difference.inMinutes < 60) {

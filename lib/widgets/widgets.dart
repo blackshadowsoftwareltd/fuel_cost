@@ -18,6 +18,8 @@ export 'fuel_entry_card.dart';
 export 'delete_confirmation_dialog.dart';
 export 'empty_state_widget.dart';
 export 'sync_fab.dart';
+export 'fuel_chart.dart';
+export 'fuel_chart_dashboard.dart';
 
 // Settings Screen Widgets
 export 'cupertino_section.dart';
