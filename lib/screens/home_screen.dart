@@ -26,6 +26,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   bool _isAuthenticated = false;
   bool _isSyncing = false;
   String _currency = '\$';
+  DateTime? _lastSyncTime;
 
   late AnimationController _fadeAnimationController;
   late AnimationController _slideAnimationController;
@@ -62,6 +63,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _loadSummaryData();
     _checkAuthStatus();
     _loadCurrency();
+    _loadLastSyncTime();
 
     // Start animations
     _fadeAnimationController.forward();
@@ -115,6 +117,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     });
   }
 
+  Future<void> _loadLastSyncTime() async {
+    final lastSync = await SyncService.getLastFullSync();
+    if (mounted) {
+      setState(() {
+        _lastSyncTime = lastSync;
+      });
+    }
+  }
+
   Future<void> _handleSync() async {
     if (!_isAuthenticated) {
       // Navigate to sign in screen
@@ -145,6 +156,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           context,
         ).showSnackBar(const SnackBar(content: Text('Data synced successfully!'), backgroundColor: Colors.green));
         _loadSummaryData();
+        _loadLastSyncTime();
       }
     } catch (e) {
       if (mounted) {
@@ -266,6 +278,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                     _loadSummaryData();
                                     _checkAuthStatus();
                                     _loadCurrency();
+                                    _loadLastSyncTime();
                                   },
                                 ),
                               ),
@@ -326,7 +339,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
                   ),
 
-                  const SizedBox(height: 5),
+                  const SizedBox(height: 16),
 
                   // Action Buttons section with staggered animation
                   StaggeredAnimationWrapper(
@@ -337,7 +350,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.grey.shade800),
                     ),
                   ),
-                  const SizedBox(height: 5),
+                  const SizedBox(height: 12),
 
                   StaggeredAnimationWrapper(
                     index: 2,
@@ -349,6 +362,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       onPressed: () async {
                         await Navigator.push(context, MaterialPageRoute(builder: (context) => const AddFuelScreen()));
                         _loadSummaryData();
+                        _loadLastSyncTime();
                       },
                       color: const Color.fromARGB(255, 46, 161, 254),
                       isPrimary: true,
@@ -368,6 +382,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           MaterialPageRoute(builder: (context) => const FuelHistoryScreen()),
                         );
                         _loadSummaryData();
+                        _loadLastSyncTime();
                       },
                       color: const Color.fromARGB(255, 11, 141, 53),
                     ),
@@ -376,7 +391,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   StaggeredAnimationWrapper(
                     index: 4,
                     animation: _staggeredAnimation,
-                    child: SyncButton(isSyncing: _isSyncing, isAuthenticated: _isAuthenticated, onPressed: _handleSync),
+                    child: SyncButton(
+                      isSyncing: _isSyncing, 
+                      isAuthenticated: _isAuthenticated, 
+                      onPressed: _handleSync,
+                      lastSyncTime: _lastSyncTime,
+                    ),
                   ),
                 ],
               ),

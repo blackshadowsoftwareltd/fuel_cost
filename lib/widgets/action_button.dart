@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
 class ActionButton extends StatelessWidget {
   final IconData icon;
@@ -21,69 +22,96 @@ class ActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 2),
+      margin: const EdgeInsets.symmetric(vertical: 4),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        gradient: isPrimary
-            ? LinearGradient(
-                colors: [color, color.withValues(alpha: 0.9)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              )
-            : LinearGradient(
-                colors: [color, color.withValues(alpha: 0.9)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(color: color.withValues(alpha: 0.4), blurRadius: 15, offset: const Offset(0, 8), spreadRadius: -3),
-          BoxShadow(color: color.withValues(alpha: 0.2), blurRadius: 25, offset: const Offset(0, 15), spreadRadius: -5),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+            spreadRadius: -4,
+          ),
+          BoxShadow(
+            color: color.withValues(alpha: 0.1),
+            blurRadius: 30,
+            offset: const Offset(0, 15),
+            spreadRadius: -8,
+          ),
         ],
+        border: Border.all(
+          color: Colors.grey.withValues(alpha: 0.1),
+          width: 0.5,
+        ),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(16),
           onTap: onPressed,
+          splashColor: color.withValues(alpha: 0.1),
+          highlightColor: color.withValues(alpha: 0.05),
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+            padding: const EdgeInsets.all(20),
             child: Row(
               children: [
+                // Icon container with Cupertino style
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.25),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 1),
+                    color: color,
+                    borderRadius: BorderRadius.circular(12),
                     boxShadow: [
-                      BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8, offset: const Offset(0, 2)),
+                      BoxShadow(
+                        color: color.withValues(alpha: 0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                        spreadRadius: -2,
+                      ),
                     ],
                   ),
-                  child: Icon(icon, size: 24, color: Colors.white),
+                  child: Icon(
+                    icon,
+                    size: 22,
+                    color: Colors.white,
+                  ),
                 ),
                 const SizedBox(width: 16),
+                // Text content
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         title,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                          letterSpacing: 0.3,
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                          letterSpacing: -0.2,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 3),
                       Text(
                         subtitle,
-                        style: TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w500),
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey.shade600,
+                          fontWeight: FontWeight.w400,
+                          letterSpacing: -0.1,
+                        ),
                       ),
                     ],
                   ),
                 ),
-                Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Colors.white.withValues(alpha: 0.8)),
+                // Cupertino-style chevron
+                Icon(
+                  CupertinoIcons.chevron_right,
+                  size: 16,
+                  color: Colors.grey.shade400,
+                ),
               ],
             ),
           ),

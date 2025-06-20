@@ -62,6 +62,8 @@ The server code is available at: https://github.com/blackshadowsoftwareltd/fuel_
 ✅ Proper error handling for network issues  
 ✅ Individual fuel entry deletion with server sync  
 ✅ Graceful fallback when server delete endpoint is not available  
+✅ Last sync time tracking for upload and download operations  
+✅ User-friendly sync time display (Just now, X minutes ago, etc.)  
 
 ## Delete Functionality
 
@@ -82,5 +84,19 @@ If this endpoint is not implemented, the app will:
 - Still delete entries locally
 - Show a warning that server sync failed
 - Continue working normally
+
+## Last Sync Time Feature
+
+The app now tracks and displays the last sync time:
+- **Upload Sync**: Recorded when entries are uploaded to server
+- **Download Sync**: Recorded when entries are downloaded from server  
+- **Full Sync**: Recorded when complete sync operation finishes
+- **Smart Display**: Shows "Just now", "5 minutes ago", "2 hours ago", etc.
+- **Automatic Reset**: Sync times are cleared when fuel data is cleared
+
+### Sync Time Storage
+- Stored in SharedPreferences using ISO 8601 format
+- Automatically updated on successful sync operations
+- Gracefully handles missing or corrupted sync time data
 
 The sync functionality is now ready to use once you configure the server URL!

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/fuel_entry.dart';
+import 'sync_service.dart';
 
 class FuelStorageService {
   static const String _fuelEntriesKey = 'fuel_entries';
@@ -170,11 +171,15 @@ class FuelStorageService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_fuelEntriesKey);
     await prefs.remove(_currentOdometerKey);
+    // Also clear sync times when clearing all fuel data
+    await SyncService.clearAllSyncTimes();
   }
 
   static Future<void> clearFuelEntries() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_fuelEntriesKey);
+    // Also clear sync times when clearing fuel entries
+    await SyncService.clearAllSyncTimes();
   }
 
   static Future<void> clearCurrentOdometer() async {

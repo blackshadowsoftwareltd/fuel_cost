@@ -1,12 +1,16 @@
 import 'dart:convert';
 import 'dart:developer';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../constraints.dart';
 import '../models/fuel_entry.dart';
 import './auth_service.dart';
 import './fuel_storage_service.dart';
 
 class SyncService {
+  static const String _lastUploadSyncKey = 'last_upload_sync_time';
+  static const String _lastDownloadSyncKey = 'last_download_sync_time';
+  static const String _lastFullSyncKey = 'last_full_sync_time';
   static Future<void> syncWithServer() async {
     final userId = await AuthService.getUserId();
     if (userId == null) {
@@ -55,7 +59,8 @@ class SyncService {
       print('Sync response: ${response.statusCode} - ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        // Sync successful
+        // Sync successful - record upload sync time
+        await _setLastUploadSync();
         return;
       } else {
         String errorMessage = 'Sync failed';
@@ -87,6 +92,9 @@ class SyncService {
 
       if (response.statusCode == 200) {
         final List<dynamic> entriesJson = json.decode(response.body);
+        
+        // Record download sync time
+        await _setLastDownloadSync();
 
         return entriesJson.map((entryJson) {
           return FuelEntry(
@@ -140,6 +148,9 @@ class SyncService {
           await FuelStorageService.saveFuelEntry(serverEntry);
         }
       }
+      
+      // Record full sync time
+      await _setLastFullSync();
     } catch (e) {
       rethrow;
     }
@@ -175,7 +186,10 @@ class SyncService {
 
       print('Upload entry response: ${response.statusCode} - ${response.body}');
 
-      if (response.statusCode != 200 && response.statusCode != 201) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        // Upload successful - record upload sync time
+        await _setLastUploadSync();
+      } else {
         String errorMessage = 'Failed to upload entry';
         try {
           final errorData = json.decode(response.body);
@@ -332,5 +346,80 @@ class SyncService {
       }
       rethrow;
     }
+  }
+
+  // Last sync time management methods
+  static Future<void> _setLastUploadSync() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_lastUploadSyncKey, DateTime.now().toIso8601String());
+  }
+
+  static Future<void> _setLastDownloadSync() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_lastDownloadSyncKey, DateTime.now().toIso8601String());
+  }
+
+  static Future<void> _setLastFullSync() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_lastFullSyncKey, DateTime.now().toIso8601String());
+  }
+
+  static Future<DateTime?> getLastUploadSync() async {
+    final prefs = await SharedPreferences.getInstance();
+    final timeString = prefs.getString(_lastUploadSyncKey);
+    if (timeString == null) return null;
+    try {
+      return DateTime.parse(timeString);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  static Future<DateTime?> getLastDownloadSync() async {
+    final prefs = await SharedPreferences.getInstance();
+    final timeString = prefs.getString(_lastDownloadSyncKey);
+    if (timeString == null) return null;
+    try {
+      return DateTime.parse(timeString);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  static Future<DateTime?> getLastFullSync() async {
+    final prefs = await SharedPreferences.getInstance();
+    final timeString = prefs.getString(_lastFullSyncKey);
+    if (timeString == null) return null;
+    try {
+      return DateTime.parse(timeString);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  static String formatLastSyncTime(DateTime? lastSync) {
+    if (lastSync == null) return 'Never';
+    
+    final now = DateTime.now();
+    final difference = now.difference(lastSync);
+    
+    if (difference.inMinutes < 1) {
+      return 'Just now';
+    } else if (difference.inMinutes < 60) {
+      return '${difference.inMinutes} minutes ago';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours} hours ago';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays} days ago';
+    } else {
+      return '${lastSync.day}/${lastSync.month}/${lastSync.year}';
+    }
+  }
+
+  static Future<void> clearAllSyncTimes() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_lastUploadSyncKey);
+    await prefs.remove(_lastDownloadSyncKey);
+    await prefs.remove(_lastFullSyncKey);
   }
 }
