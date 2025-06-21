@@ -19,7 +19,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStateMixin {
-  bool _isSyncing = false;
 
   late AnimationController _fadeAnimationController;
   late AnimationController _slideAnimationController;
@@ -89,13 +88,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
   }
 
   Future<void> _performSync() async {
-    setState(() {
-      _isSyncing = true;
-    });
-
     try {
-      await ref.read(fuelEntriesProvider.notifier).syncWithServer();
-      await ref.read(syncStatusProvider.notifier).refresh();
+      // Use the proper sync provider instead of direct fuel entries sync
+      await ref.read(syncStatusProvider.notifier).performSync();
+      // Refresh fuel entries after sync
+      await ref.read(fuelEntriesProvider.notifier).refresh();
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -107,12 +104,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Sync failed: $e'), backgroundColor: Colors.red)
         );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isSyncing = false;
-        });
       }
     }
   }
@@ -403,6 +394,38 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                               loading: () => const CircularProgressIndicator(),
                               error: (e, _) => Text('Error: $e'),
                             ),
+
+                            const SizedBox(height: 16),
+
+                            // Max Mileage Line
+                            mileageCalculationsAsync.when(
+                              data: (calculations) => _buildSummaryLine(
+                                icon: Icons.keyboard_double_arrow_up_rounded,
+                                label: 'Max Mileage',
+                                value: calculations['maxMileage']! > 0 
+                                    ? '${calculations['maxMileage']!.toStringAsFixed(1)} km/L' 
+                                    : 'N/A',
+                                color: const Color(0xFF00C853),
+                              ),
+                              loading: () => const CircularProgressIndicator(),
+                              error: (e, _) => Text('Error: $e'),
+                            ),
+
+                            const SizedBox(height: 16),
+
+                            // Min Mileage Line
+                            mileageCalculationsAsync.when(
+                              data: (calculations) => _buildSummaryLine(
+                                icon: Icons.keyboard_double_arrow_down_rounded,
+                                label: 'Min Mileage',
+                                value: calculations['minMileage']! > 0 
+                                    ? '${calculations['minMileage']!.toStringAsFixed(1)} km/L' 
+                                    : 'N/A',
+                                color: const Color(0xFFFF5722),
+                              ),
+                              loading: () => const CircularProgressIndicator(),
+                              error: (e, _) => Text('Error: $e'),
+                            ),
                           ],
                         ),
                       ),
@@ -481,26 +504,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                     index: 6,
                     animation: _staggeredAnimation,
                     child: authAsync.when(
-                      data: (isAuthenticated) => lastSyncAsync.when(
-                        data: (lastSyncTime) => SyncButton(
-                          isSyncing: _isSyncing,
-                          isAuthenticated: isAuthenticated,
-                          onPressed: _handleSync,
-                          lastSyncTime: lastSyncTime,
-                        ),
-                        loading: () => SyncButton(
-                          isSyncing: _isSyncing,
-                          isAuthenticated: isAuthenticated,
-                          onPressed: _handleSync,
-                          lastSyncTime: null,
-                        ),
-                        error: (e, _) => SyncButton(
-                          isSyncing: _isSyncing,
-                          isAuthenticated: isAuthenticated,
-                          onPressed: _handleSync,
-                          lastSyncTime: null,
-                        ),
-                      ),
+                      data: (isAuthenticated) {
+                        final syncStatusAsync = ref.watch(syncStatusProvider);
+                        return syncStatusAsync.when(
+                          data: (lastSyncTime) => SyncButton(
+                            isSyncing: false,
+                            isAuthenticated: isAuthenticated,
+                            onPressed: _handleSync,
+                            lastSyncTime: lastSyncTime,
+                          ),
+                          loading: () => SyncButton(
+                            isSyncing: true,
+                            isAuthenticated: isAuthenticated,
+                            onPressed: _handleSync,
+                            lastSyncTime: null,
+                          ),
+                          error: (e, _) => SyncButton(
+                            isSyncing: false,
+                            isAuthenticated: isAuthenticated,
+                            onPressed: _handleSync,
+                            lastSyncTime: null,
+                          ),
+                        );
+                      },
                       loading: () => const CircularProgressIndicator(),
                       error: (e, _) => Text('Error: $e'),
                     ),

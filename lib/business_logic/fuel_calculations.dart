@@ -15,9 +15,13 @@ class FuelCalculations {
     double lastTripMileage = 0.0;
     double overallMileage = 0.0;
     double totalDistance = 0.0;
+    double maxMileage = 0.0;
+    double minMileage = double.infinity;
     
     if (sortedEntries.length > 1) {
-      // Get ALL distance
+      // Get ALL distance and calculate individual trip mileages
+      final tripMileages = <double>[];
+      
       for (int i = 1; i < sortedEntries.length; i++) {
         if (sortedEntries[i].odometerReading != null && 
             sortedEntries[i - 1].odometerReading != null) {
@@ -25,11 +29,20 @@ class FuelCalculations {
                           sortedEntries[i - 1].odometerReading!;
           if (distance > 0) {
             totalDistance += distance;
+            // Calculate mileage for this trip using the fuel from the previous entry
+            final tripMileage = distance / sortedEntries[i - 1].liters;
+            tripMileages.add(tripMileage);
           }
         }
       }
 
       if (totalDistance > 0) {
+        // Calculate max and min mileage from individual trips
+        if (tripMileages.isNotEmpty) {
+          maxMileage = tripMileages.reduce((a, b) => a > b ? a : b);
+          minMileage = tripMileages.reduce((a, b) => a < b ? a : b);
+        }
+        
         // Last trip mileage: distance of last trip / (fuel consumed - skip last entry fuel)
         if (sortedEntries.length >= 2) {
           final lastEntry = sortedEntries.last;
@@ -54,10 +67,17 @@ class FuelCalculations {
       }
     }
     
+    // Handle edge cases for min mileage
+    if (minMileage == double.infinity) {
+      minMileage = 0.0;
+    }
+    
     return {
       'lastTripMileage': lastTripMileage,
       'overallMileage': overallMileage,
       'totalDistance': totalDistance,
+      'maxMileage': maxMileage,
+      'minMileage': minMileage,
     };
   }
 

@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../constraints.dart';
 import '../models/fuel_entry.dart';
+import '../utils/error_utils.dart';
 import './auth_service.dart';
 import './fuel_storage_service.dart';
 
@@ -64,18 +65,12 @@ class SyncService {
         await _setLastUploadSync();
         return;
       } else {
-        String errorMessage = 'Sync failed';
-        try {
-          final errorData = json.decode(response.body);
-          errorMessage = errorData['message'] ?? errorData.toString();
-        } catch (e) {
-          errorMessage = response.body;
-        }
+        final errorMessage = ErrorUtils.extractErrorFromResponse(response.body, response.statusCode);
         throw Exception(errorMessage);
       }
     } catch (e) {
-      if (e.toString().contains('SocketException') || e.toString().contains('TimeoutException')) {
-        throw Exception('Cannot connect to server. Please check your internet connection.');
+      if (ErrorUtils.isNetworkError(e.toString())) {
+        throw Exception(ErrorUtils.getNetworkErrorMessage());
       }
       rethrow;
     }
@@ -110,12 +105,12 @@ class SyncService {
           );
         }).toList();
       } else {
-        final errorData = json.decode(response.body);
-        throw Exception(errorData['message'] ?? 'Failed to download data');
+        final errorMessage = ErrorUtils.extractErrorFromResponse(response.body, response.statusCode);
+        throw Exception(errorMessage);
       }
     } catch (e) {
-      if (e.toString().contains('SocketException') || e.toString().contains('TimeoutException')) {
-        throw Exception('Cannot connect to server. Please check your internet connection.');
+      if (ErrorUtils.isNetworkError(e.toString())) {
+        throw Exception(ErrorUtils.getNetworkErrorMessage());
       }
       rethrow;
     }
@@ -191,18 +186,12 @@ class SyncService {
         // Upload successful - record upload sync time
         await _setLastUploadSync();
       } else {
-        String errorMessage = 'Failed to upload entry';
-        try {
-          final errorData = json.decode(response.body);
-          errorMessage = errorData['message'] ?? errorData.toString();
-        } catch (e) {
-          errorMessage = response.body;
-        }
+        final errorMessage = ErrorUtils.extractErrorFromResponse(response.body, response.statusCode);
         throw Exception(errorMessage);
       }
     } catch (e) {
-      if (e.toString().contains('SocketException') || e.toString().contains('TimeoutException')) {
-        throw Exception('Cannot connect to server. Please check your internet connection.');
+      if (ErrorUtils.isNetworkError(e.toString())) {
+        throw Exception(ErrorUtils.getNetworkErrorMessage());
       }
       rethrow;
     }
@@ -235,17 +224,11 @@ class SyncService {
         throw Exception('Server does not support delete functionality yet. Entry removed locally only.');
       } else {
         // Other error
-        String errorMessage = 'Failed to delete entry from server';
-        try {
-          final errorData = json.decode(response.body);
-          errorMessage = errorData['message'] ?? errorData.toString();
-        } catch (e) {
-          errorMessage = 'Server error: ${response.statusCode}';
-        }
+        final errorMessage = ErrorUtils.extractErrorFromResponse(response.body, response.statusCode);
         throw Exception(errorMessage);
       }
     } catch (e) {
-      if (e.toString().contains('SocketException') || e.toString().contains('TimeoutException')) {
+      if (ErrorUtils.isNetworkError(e.toString())) {
         throw Exception('Cannot connect to server. Entry deleted locally only.');
       }
       rethrow;
@@ -267,12 +250,12 @@ class SyncService {
       );
 
       if (response.statusCode != 200) {
-        final errorData = json.decode(response.body);
-        throw Exception(errorData['message'] ?? 'Failed to bulk delete entries from server');
+        final errorMessage = ErrorUtils.extractErrorFromResponse(response.body, response.statusCode);
+        throw Exception(errorMessage);
       }
     } catch (e) {
-      if (e.toString().contains('SocketException') || e.toString().contains('TimeoutException')) {
-        throw Exception('Cannot connect to server. Please check your internet connection.');
+      if (ErrorUtils.isNetworkError(e.toString())) {
+        throw Exception(ErrorUtils.getNetworkErrorMessage());
       }
       rethrow;
     }
@@ -299,12 +282,12 @@ class SyncService {
       );
 
       if (response.statusCode != 200) {
-        final errorData = json.decode(response.body);
-        throw Exception(errorData['message'] ?? 'Failed to update entry on server');
+        final errorMessage = ErrorUtils.extractErrorFromResponse(response.body, response.statusCode);
+        throw Exception(errorMessage);
       }
     } catch (e) {
-      if (e.toString().contains('SocketException') || e.toString().contains('TimeoutException')) {
-        throw Exception('Cannot connect to server. Please check your internet connection.');
+      if (ErrorUtils.isNetworkError(e.toString())) {
+        throw Exception(ErrorUtils.getNetworkErrorMessage());
       }
       rethrow;
     }
@@ -335,12 +318,12 @@ class SyncService {
       } else if (response.statusCode == 404) {
         return null; // Entry not found
       } else {
-        final errorData = json.decode(response.body);
-        throw Exception(errorData['message'] ?? 'Failed to get entry from server');
+        final errorMessage = ErrorUtils.extractErrorFromResponse(response.body, response.statusCode);
+        throw Exception(errorMessage);
       }
     } catch (e) {
-      if (e.toString().contains('SocketException') || e.toString().contains('TimeoutException')) {
-        throw Exception('Cannot connect to server. Please check your internet connection.');
+      if (ErrorUtils.isNetworkError(e.toString())) {
+        throw Exception(ErrorUtils.getNetworkErrorMessage());
       }
       rethrow;
     }
