@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'screens/home_screen.dart';
 
 void main() {
-  runApp(const FuelCostApp());
+  runApp(const ProviderScope(child: FuelCostApp()));
 }
 
 class FuelCostApp extends StatelessWidget {

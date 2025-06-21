@@ -34,6 +34,32 @@ class AuthService {
     }
   }
 
+  static Future<Map<String, dynamic>> signUp({required String email, required String password, required String name}) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/auth/signup'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'email': email, 'password': password, 'name': name}),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = json.decode(response.body);
+
+        await _saveAuthData(userId: data['user_id']?.toString() ?? '', email: email);
+
+        return data;
+      } else {
+        final errorData = json.decode(response.body);
+        throw Exception(errorData['message'] ?? 'Registration failed');
+      }
+    } catch (e) {
+      if (e.toString().contains('SocketException') || e.toString().contains('TimeoutException')) {
+        throw Exception('Cannot connect to server. Please check your internet connection.');
+      }
+      rethrow;
+    }
+  }
+
   static Future<void> _saveAuthData({required String userId, required String email}) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_userIdKey, userId);

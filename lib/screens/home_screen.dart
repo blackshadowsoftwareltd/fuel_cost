@@ -1,37 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../widgets/widgets.dart';
-import '../models/fuel_entry.dart';
-import '../services/fuel_storage_service.dart';
-import '../services/auth_service.dart';
-import '../services/sync_service.dart';
-import '../services/currency_service.dart';
+import '../providers/fuel_entries_provider.dart';
+import '../providers/auth_provider.dart';
+import '../providers/summary_providers.dart';
+import '../providers/sync_provider.dart';
 import 'add_fuel_screen.dart';
 import 'fuel_history_screen.dart';
 import 'settings_screen.dart';
 import 'how_to_use_screen.dart';
 import 'auth_screen.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
-  double _totalCost = 0.0;
-  double _totalLiters = 0.0;
-  int _totalEntries = 0;
-  double? _averageMileage;
-  double? _currentOdometer;
-  double _lastTripMileage = 0.0;
-  double _overallMileage = 0.0;
-  double _totalDistance = 0.0;
-  List<FuelEntry> _entries = [];
-  bool _isAuthenticated = false;
+class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStateMixin {
   bool _isSyncing = false;
-  String _currency = '\$';
-  DateTime? _lastSyncTime;
 
   late AnimationController _fadeAnimationController;
   late AnimationController _slideAnimationController;
@@ -65,11 +53,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       end: 1.0,
     ).animate(CurvedAnimation(parent: _staggeredAnimationController, curve: Curves.easeOutCubic));
 
-    _loadSummaryData();
-    _checkAuthStatus();
-    _loadCurrency();
-    _loadLastSyncTime();
-
     // Start animations
     _fadeAnimationController.forward();
     _slideAnimationController.forward();
@@ -84,111 +67,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  Future<void> _loadCurrency() async {
-    final currency = await CurrencyService.getSelectedCurrency();
-    if (mounted) {
-      setState(() {
-        _currency = currency;
-      });
-    }
-  }
-
-  Future<void> _loadSummaryData() async {
-    try {
-      final totalCost = await FuelStorageService.getTotalFuelCost();
-      final totalLiters = await FuelStorageService.getTotalLiters();
-      final entries = await FuelStorageService.getFuelEntries();
-      final averageMileage = await FuelStorageService.getAverageMileage();
-      final currentOdometer = await FuelStorageService.getCurrentOdometer();
-
-      // Calculate mileage metrics and total distance
-      final sortedEntries = List<FuelEntry>.from(entries)..sort((a, b) => a.dateTime.compareTo(b.dateTime));
-
-      double lastTripMileage = 0.0;
-      double overallMileage = 0.0;
-      double totalDistance = 0.0;
-
-      if (sortedEntries.length > 1) {
-        final mileages = <double>[];
-
-        // Calculate total distance from all trips
-        for (int i = 1; i < sortedEntries.length; i++) {
-          if (sortedEntries[i].odometerReading != null && sortedEntries[i - 1].odometerReading != null) {
-            final distance = sortedEntries[i].odometerReading! - sortedEntries[i - 1].odometerReading!;
-            if (distance > 0) {
-              totalDistance += distance;
-              final mileage = distance / sortedEntries[i].liters;
-              mileages.add(mileage);
-            }
-          }
-        }
-
-        if (totalDistance > 0) {
-          // Last trip mileage: distance of last trip / (fuel consumed - skip last entry fuel)
-          if (sortedEntries.length >= 2) {
-            final lastEntry = sortedEntries.last;
-            final secondLastEntry = sortedEntries[sortedEntries.length - 2];
-            
-            if (lastEntry.odometerReading != null && secondLastEntry.odometerReading != null) {
-              final lastTripDistance = lastEntry.odometerReading! - secondLastEntry.odometerReading!;
-              if (lastTripDistance > 0) {
-                // Skip the last entry fuel, use the second last entry fuel for this trip
-                lastTripMileage = lastTripDistance / secondLastEntry.liters;
-              }
-            }
-          }
-
-          // Overall mileage: total distance / (total fuel - last entry fuel)
-          final totalFuelExcludingLast = totalLiters - sortedEntries.last.liters;
-          if (totalFuelExcludingLast > 0) {
-            overallMileage = totalDistance / totalFuelExcludingLast;
-          }
-        }
-      }
-
-      setState(() {
-        _totalCost = totalCost;
-        _totalLiters = totalLiters;
-        _totalEntries = entries.length;
-        _averageMileage = averageMileage;
-        _currentOdometer = currentOdometer;
-        _lastTripMileage = lastTripMileage;
-        _overallMileage = overallMileage;
-        _totalDistance = totalDistance;
-        _entries = entries..sort((a, b) => b.dateTime.compareTo(a.dateTime));
-      });
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error loading data: $e')));
-      }
-    }
-  }
-
-  Future<void> _checkAuthStatus() async {
-    final isAuth = await AuthService.isAuthenticated();
-    setState(() {
-      _isAuthenticated = isAuth;
-    });
-  }
-
-  Future<void> _loadLastSyncTime() async {
-    final lastSync = await SyncService.getLastFullSync();
-    if (mounted) {
-      setState(() {
-        _lastSyncTime = lastSync;
-      });
-    }
-  }
-
   Future<void> _handleSync() async {
-    if (!_isAuthenticated) {
+    final isAuthenticated = ref.read(authenticationProvider).value ?? false;
+    
+    if (!isAuthenticated) {
       // Navigate to sign in screen
       final result = await Navigator.push(context, MaterialPageRoute(builder: (context) => const AuthScreen()));
 
       // If sign in was successful, immediately sync
       if (result == true) {
-        await _checkAuthStatus();
-        if (_isAuthenticated) {
+        await ref.read(authenticationProvider.notifier).refresh();
+        final newAuthState = ref.read(authenticationProvider).value ?? false;
+        if (newAuthState) {
           await _performSync();
         }
       }
@@ -204,19 +94,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     });
 
     try {
-      await SyncService.fullSync();
+      await ref.read(fuelEntriesProvider.notifier).syncWithServer();
+      await ref.read(syncStatusProvider.notifier).refresh();
+      
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Data synced successfully!'), backgroundColor: Colors.green));
-        _loadSummaryData();
-        _loadLastSyncTime();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Data synced successfully!'), backgroundColor: Colors.green)
+        );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Sync failed: $e'), backgroundColor: Colors.red));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Sync failed: $e'), backgroundColor: Colors.red)
+        );
       }
     } finally {
       if (mounted) {
@@ -272,6 +162,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    // Watch all the providers
+    final entriesAsync = ref.watch(fuelEntriesProvider);
+    final totalCostAsync = ref.watch(totalCostProvider);
+    final totalLitersAsync = ref.watch(totalLitersProvider);
+    final mileageCalculationsAsync = ref.watch(mileageCalculationsProvider);
+    final currencyAsync = ref.watch(currencyProvider);
+    final authAsync = ref.watch(authenticationProvider);
+    final lastSyncAsync = ref.watch(syncStatusProvider);
+
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -361,10 +260,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                       context,
                                       MaterialPageRoute(builder: (context) => const SettingsScreen()),
                                     );
-                                    _loadSummaryData();
-                                    _checkAuthStatus();
-                                    _loadCurrency();
-                                    _loadLastSyncTime();
+                                    // Refresh providers after returning from settings
+                                    ref.invalidate(fuelEntriesProvider);
+                                    ref.invalidate(authenticationProvider);
+                                    ref.invalidate(currencyProvider);
+                                    ref.invalidate(syncStatusProvider);
                                   },
                                 ),
                               ),
@@ -375,87 +275,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
                   ),
 
-                  // // Stats Cards with staggered animation
-                  // StaggeredAnimationWrapper(
-                  //   index: 0,
-                  //   animation: _staggeredAnimation,
-                  //   child: GridView.count(
-                  //     shrinkWrap: true,
-                  //     physics: const NeverScrollableScrollPhysics(),
-                  //     crossAxisCount: 2,
-                  //     mainAxisSpacing: 12,
-                  //     crossAxisSpacing: 12,
-                  //     childAspectRatio: 1.2,
-                  //     children: [
-                  //       StatCard(
-                  //         icon: Icons.attach_money,
-                  //         title: 'Total Spent',
-                  //         value: '$_currency${_totalCost.toStringAsFixed(2)}',
-                  //         color: Colors.red,
-                  //         backgroundColor: const Color(0xFFE91E63),
-                  //         onTap: () async {
-                  //           await Navigator.push(
-                  //             context,
-                  //             MaterialPageRoute(builder: (context) => const FuelHistoryScreen()),
-                  //           );
-                  //           _loadSummaryData();
-                  //           _loadLastSyncTime();
-                  //         },
-                  //       ),
-                  //       StatCard(
-                  //         icon: Icons.local_gas_station,
-                  //         title: 'Total Liters',
-                  //         value: '${_totalLiters.toStringAsFixed(1)}L',
-                  //         color: Colors.blue,
-                  //         backgroundColor: const Color(0xFF2196F3),
-                  //         onTap: () async {
-                  //           await Navigator.push(
-                  //             context,
-                  //             MaterialPageRoute(builder: (context) => const FuelHistoryScreen()),
-                  //           );
-                  //           _loadSummaryData();
-                  //           _loadLastSyncTime();
-                  //         },
-                  //       ),
-                  //       StatCard(
-                  //         icon: Icons.list_alt,
-                  //         title: 'Fuel Entries',
-                  //         value: '$_totalEntries',
-                  //         color: Colors.green,
-                  //         backgroundColor: const Color(0xFF4CAF50),
-                  //         onTap: () async {
-                  //           await Navigator.push(
-                  //             context,
-                  //             MaterialPageRoute(builder: (context) => const FuelHistoryScreen()),
-                  //           );
-                  //           _loadSummaryData();
-                  //           _loadLastSyncTime();
-                  //         },
-                  //       ),
-                  //       StatCard(
-                  //         icon: _averageMileage != null ? Icons.trending_up : Icons.speed,
-                  //         title: _averageMileage != null ? 'Average Mileage' : 'Current Odometer',
-                  //         value: _averageMileage != null
-                  //             ? '${_averageMileage!.toStringAsFixed(1)} km/L'
-                  //             : _currentOdometer != null
-                  //             ? '${_currentOdometer!.toStringAsFixed(0)} km'
-                  //             : 'No data',
-                  //         color: Colors.orange,
-                  //         backgroundColor: const Color(0xFFFF9800),
-                  //         onTap: _averageMileage != null
-                  //             ? () async {
-                  //                 await Navigator.push(
-                  //                   context,
-                  //                   MaterialPageRoute(builder: (context) => const FuelHistoryScreen()),
-                  //                 );
-                  //                 _loadSummaryData();
-                  //                 _loadLastSyncTime();
-                  //               }
-                  //             : null,
-                  //       ),
-                  //     ],
-                  //   ),
-                  // ),
                   const SizedBox(height: 10),
 
                   // Summary Section
@@ -508,51 +327,81 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             const SizedBox(height: 20),
 
                             // Cost Line
-                            _buildSummaryLine(
-                              icon: Icons.payments_rounded,
-                              label: 'Total Cost',
-                              value: '$_currency${_totalCost.toStringAsFixed(2)}',
-                              color: const Color(0xFFE91E63),
+                            totalCostAsync.when(
+                              data: (totalCost) => currencyAsync.when(
+                                data: (currency) => _buildSummaryLine(
+                                  icon: Icons.payments_rounded,
+                                  label: 'Total Cost',
+                                  value: '$currency${totalCost.toStringAsFixed(2)}',
+                                  color: const Color(0xFFE91E63),
+                                ),
+                                loading: () => const CircularProgressIndicator(),
+                                error: (e, _) => Text('Error: $e'),
+                              ),
+                              loading: () => const CircularProgressIndicator(),
+                              error: (e, _) => Text('Error: $e'),
                             ),
 
                             const SizedBox(height: 16),
 
                             // Liters Line
-                            _buildSummaryLine(
-                              icon: Icons.local_gas_station_rounded,
-                              label: 'Total Liters',
-                              value: '${_totalLiters.toStringAsFixed(1)}L',
-                              color: const Color(0xFF2196F3),
+                            totalLitersAsync.when(
+                              data: (totalLiters) => _buildSummaryLine(
+                                icon: Icons.local_gas_station_rounded,
+                                label: 'Total Liters',
+                                value: '${totalLiters.toStringAsFixed(1)}L',
+                                color: const Color(0xFF2196F3),
+                              ),
+                              loading: () => const CircularProgressIndicator(),
+                              error: (e, _) => Text('Error: $e'),
                             ),
 
                             const SizedBox(height: 16),
 
                             // Distance Line
-                            _buildSummaryLine(
-                              icon: Icons.route_rounded,
-                              label: 'Total Distance',
-                              value: _totalDistance > 0 ? '${_totalDistance.toStringAsFixed(0)} km' : 'N/A',
-                              color: const Color(0xFFFF9800),
+                            mileageCalculationsAsync.when(
+                              data: (calculations) => _buildSummaryLine(
+                                icon: Icons.route_rounded,
+                                label: 'Total Distance',
+                                value: calculations['totalDistance']! > 0 
+                                    ? '${calculations['totalDistance']!.toStringAsFixed(0)} km' 
+                                    : 'N/A',
+                                color: const Color(0xFFFF9800),
+                              ),
+                              loading: () => const CircularProgressIndicator(),
+                              error: (e, _) => Text('Error: $e'),
                             ),
 
                             const SizedBox(height: 16),
 
                             // Last Trip Mileage Line
-                            _buildSummaryLine(
-                              icon: Icons.directions_car_rounded,
-                              label: 'Last Trip Mileage',
-                              value: _lastTripMileage > 0 ? '${_lastTripMileage.toStringAsFixed(1)} km/L' : 'N/A',
-                              color: const Color(0xFF4CAF50),
+                            mileageCalculationsAsync.when(
+                              data: (calculations) => _buildSummaryLine(
+                                icon: Icons.directions_car_rounded,
+                                label: 'Last Trip Mileage',
+                                value: calculations['lastTripMileage']! > 0 
+                                    ? '${calculations['lastTripMileage']!.toStringAsFixed(1)} km/L' 
+                                    : 'N/A',
+                                color: const Color(0xFF4CAF50),
+                              ),
+                              loading: () => const CircularProgressIndicator(),
+                              error: (e, _) => Text('Error: $e'),
                             ),
 
                             const SizedBox(height: 16),
 
                             // Overall Mileage Line
-                            _buildSummaryLine(
-                              icon: Icons.trending_up_rounded,
-                              label: 'Overall Mileage',
-                              value: _overallMileage > 0 ? '${_overallMileage.toStringAsFixed(1)} km/L' : 'N/A',
-                              color: const Color(0xFF9C27B0),
+                            mileageCalculationsAsync.when(
+                              data: (calculations) => _buildSummaryLine(
+                                icon: Icons.trending_up_rounded,
+                                label: 'Overall Mileage',
+                                value: calculations['overallMileage']! > 0 
+                                    ? '${calculations['overallMileage']!.toStringAsFixed(1)} km/L' 
+                                    : 'N/A',
+                                color: const Color(0xFF9C27B0),
+                              ),
+                              loading: () => const CircularProgressIndicator(),
+                              error: (e, _) => Text('Error: $e'),
                             ),
                           ],
                         ),
@@ -566,7 +415,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   StaggeredAnimationWrapper(
                     index: 2,
                     animation: _staggeredAnimation,
-                    child: FuelChartDashboard(entries: _entries, currency: _currency),
+                    child: entriesAsync.when(
+                      data: (entries) => currencyAsync.when(
+                        data: (currency) => FuelChartDashboard(entries: entries, currency: currency),
+                        loading: () => const CircularProgressIndicator(),
+                        error: (e, _) => Text('Error: $e'),
+                      ),
+                      loading: () => const CircularProgressIndicator(),
+                      error: (e, _) => Text('Error: $e'),
+                    ),
                   ),
 
                   const SizedBox(height: 16),
@@ -591,8 +448,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       subtitle: _getButtonSubtitle('Add Fuel Entry'),
                       onPressed: () async {
                         await Navigator.push(context, MaterialPageRoute(builder: (context) => const AddFuelScreen()));
-                        _loadSummaryData();
-                        _loadLastSyncTime();
+                        // Refresh providers after adding entry
+                        ref.invalidate(fuelEntriesProvider);
+                        ref.invalidate(syncStatusProvider);
                       },
                       color: const Color.fromARGB(255, 46, 161, 254),
                       isPrimary: true,
@@ -611,8 +469,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           context,
                           MaterialPageRoute(builder: (context) => const FuelHistoryScreen()),
                         );
-                        _loadSummaryData();
-                        _loadLastSyncTime();
+                        // Refresh providers after returning from history
+                        ref.invalidate(fuelEntriesProvider);
+                        ref.invalidate(syncStatusProvider);
                       },
                       color: const Color.fromARGB(255, 11, 141, 53),
                     ),
@@ -621,11 +480,29 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   StaggeredAnimationWrapper(
                     index: 6,
                     animation: _staggeredAnimation,
-                    child: SyncButton(
-                      isSyncing: _isSyncing,
-                      isAuthenticated: _isAuthenticated,
-                      onPressed: _handleSync,
-                      lastSyncTime: _lastSyncTime,
+                    child: authAsync.when(
+                      data: (isAuthenticated) => lastSyncAsync.when(
+                        data: (lastSyncTime) => SyncButton(
+                          isSyncing: _isSyncing,
+                          isAuthenticated: isAuthenticated,
+                          onPressed: _handleSync,
+                          lastSyncTime: lastSyncTime,
+                        ),
+                        loading: () => SyncButton(
+                          isSyncing: _isSyncing,
+                          isAuthenticated: isAuthenticated,
+                          onPressed: _handleSync,
+                          lastSyncTime: null,
+                        ),
+                        error: (e, _) => SyncButton(
+                          isSyncing: _isSyncing,
+                          isAuthenticated: isAuthenticated,
+                          onPressed: _handleSync,
+                          lastSyncTime: null,
+                        ),
+                      ),
+                      loading: () => const CircularProgressIndicator(),
+                      error: (e, _) => Text('Error: $e'),
                     ),
                   ),
                 ],

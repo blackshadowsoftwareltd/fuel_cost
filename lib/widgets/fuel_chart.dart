@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../models/fuel_entry.dart';
+import '../business_logic/fuel_calculations.dart';
 
 class FuelChart extends StatelessWidget {
   final List<FuelEntry> entries;
@@ -146,27 +147,10 @@ class FuelChart extends StatelessWidget {
           yValue = entry.liters;
           break;
         case 'mileage':
-          if (i > 0) {
-            // Get ALL distance up to this point
-            double totalDistance = 0;
-            for (int j = 1; j <= i; j++) {
-              if (sortedEntries[j].odometerReading != null && sortedEntries[j - 1].odometerReading != null) {
-                final distance = sortedEntries[j].odometerReading! - sortedEntries[j - 1].odometerReading!;
-                if (distance > 0) {
-                  totalDistance += distance;
-                }
-              }
-            }
-            
-            // Get total fuel up to this point, then minus the last entry
-            double totalFuel = 0;
-            for (int j = 0; j <= i; j++) {
-              totalFuel += sortedEntries[j].liters;
-            }
-            // Minus the last entry fuel (which is the current entry in the loop)
-            final totalFuelMinusLast = totalFuel - sortedEntries[i].liters;
-            
-            yValue = totalFuelMinusLast > 0 ? totalDistance / totalFuelMinusLast : 0;
+          // Use business logic for consistency
+          final chartData = FuelCalculations.calculateEfficiencyChartData(sortedEntries);
+          if (i < chartData.length) {
+            yValue = chartData[i];
           } else {
             yValue = 0;
           }
@@ -307,19 +291,9 @@ class FuelChart extends StatelessWidget {
         unit = 'L';
         break;
       case 'mileage':
-        // Get ALL distance
-        double totalDistance = 0;
-        for (int i = 1; i < sortedEntries.length; i++) {
-          if (sortedEntries[i].odometerReading != null && sortedEntries[i - 1].odometerReading != null) {
-            final distance = sortedEntries[i].odometerReading! - sortedEntries[i - 1].odometerReading!;
-            if (distance > 0) {
-              totalDistance += distance;
-            }
-          }
-        }
-        
-        // Get total fuel in liters, then minus the last entry fuel
-        double totalFuel = sortedEntries.fold(0.0, (sum, entry) => sum + entry.liters);
+        // Use business logic for consistency
+        final totalDistance = FuelCalculations.calculateTotalDistance(sortedEntries);
+        final totalFuel = sortedEntries.fold(0.0, (sum, entry) => sum + entry.liters);
         final totalFuelMinusLast = totalFuel - sortedEntries.last.liters;
         
         if (totalFuelMinusLast > 0) {
