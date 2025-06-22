@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import '../services/sync_service.dart';
 import '../services/auth_service.dart';
 import '../models/fuel_entry.dart';
@@ -9,7 +11,7 @@ class SyncLogic {
     if (!isAuthenticated) {
       throw Exception('User not authenticated');
     }
-    
+
     await SyncService.fullSync();
   }
 
@@ -20,12 +22,12 @@ class SyncLogic {
       // Don't throw error, just skip upload
       return;
     }
-    
+
     try {
       await SyncService.uploadEntry(entry);
     } catch (e) {
       // Log error but don't throw, allow offline operation
-      print('Failed to upload entry: $e');
+      debugPrint('Failed to upload entry: $e');
     }
   }
 
@@ -36,12 +38,12 @@ class SyncLogic {
       // Don't throw error, just skip server deletion
       return;
     }
-    
+
     try {
       await SyncService.deleteEntryFromServer(entryId);
     } catch (e) {
       // Log error but don't throw, allow offline operation
-      print('Failed to delete entry from server: $e');
+      debugPrint('Failed to delete entry from server: $e');
     }
   }
 
@@ -59,7 +61,7 @@ class SyncLogic {
   static Future<bool> isSyncNeeded() async {
     final lastSync = await getLastSyncTime();
     if (lastSync == null) return true;
-    
+
     final now = DateTime.now();
     final difference = now.difference(lastSync);
     return difference.inHours >= 1;

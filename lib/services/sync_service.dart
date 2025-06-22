@@ -1,5 +1,6 @@
 import 'dart:convert';
-import 'dart:developer'; 
+import 'dart:developer';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../constraints.dart';
@@ -7,6 +8,7 @@ import '../models/fuel_entry.dart';
 import '../utils/error_utils.dart';
 import './auth_service.dart';
 import './fuel_storage_service.dart';
+import './http_client_service.dart';
 
 class SyncService {
   static const String _lastUploadSyncKey = 'last_upload_sync_time';
@@ -24,7 +26,7 @@ class SyncService {
       final localEntries = await FuelStorageService.getFuelEntries();
 
       if (localEntries.isEmpty) {
-        log('No local entries to sync');
+        debugPrint('No local entries to sync');
         return;
       }
 
@@ -44,21 +46,21 @@ class SyncService {
 
         return entryMap;
       }).toList();
-      log(bulkData.toString());
+      debugPrint(bulkData.toString());
       // Upload bulk data to server
       final headers = AuthService.getAuthHeaders();
       final requestBody = json.encode({'user_id': userId, 'entries': bulkData});
 
-      // Debug: Print the request body
-      print('Sync request body: $requestBody');
+      // Debug: debugPrint the request body
+      debugPrint('Sync request body: $requestBody');
 
-      final response = await http.post(
+      final response = await HttpClientService.client.post(
         Uri.parse('$baseUrl/api/fuel-entries/bulk'),
         headers: headers,
         body: requestBody,
       );
 
-      print('Sync response: ${response.statusCode} - ${response.body}');
+      debugPrint('Sync response: ${response.statusCode} - ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         // Sync successful - record upload sync time
@@ -84,7 +86,10 @@ class SyncService {
 
     try {
       final headers = AuthService.getAuthHeaders();
-      final response = await http.get(Uri.parse('$baseUrl/api/fuel-entries/$userId'), headers: headers);
+      final response = await HttpClientService.client.get(
+        Uri.parse('$baseUrl/api/fuel-entries/$userId'),
+        headers: headers,
+      );
 
       if (response.statusCode == 200) {
         final List<dynamic> entriesJson = json.decode(response.body);
@@ -175,12 +180,16 @@ class SyncService {
 
       final requestBody = json.encode(entryMap);
 
-      // Debug: Print the request body
-      print('Upload entry request body: $requestBody');
+      // Debug: debugPrint the request body
+      debugPrint('Upload entry request body: $requestBody');
 
-      final response = await http.post(Uri.parse('$baseUrl/api/fuel-entries'), headers: headers, body: requestBody);
+      final response = await HttpClientService.client.post(
+        Uri.parse('$baseUrl/api/fuel-entries'),
+        headers: headers,
+        body: requestBody,
+      );
 
-      print('Upload entry response: ${response.statusCode} - ${response.body}');
+      debugPrint('Upload entry response: ${response.statusCode} - ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         // Upload successful - record upload sync time
@@ -205,19 +214,22 @@ class SyncService {
 
     try {
       final headers = AuthService.getAuthHeaders();
-      print('Attempting to delete entry: $entryId for user: $userId');
-      print('DELETE URL: $baseUrl/api/fuel-entries/$userId/$entryId');
+      debugPrint('Attempting to delete entry: $entryId for user: $userId');
+      debugPrint('DELETE URL: $baseUrl/api/fuel-entries/$userId/$entryId');
 
-      final response = await http.delete(Uri.parse('$baseUrl/api/fuel-entries/$userId/$entryId'), headers: headers);
+      final response = await HttpClientService.client.delete(
+        Uri.parse('$baseUrl/api/fuel-entries/$userId/$entryId'),
+        headers: headers,
+      );
 
-      print('Delete response: ${response.statusCode} - ${response.body}');
+      debugPrint('Delete response: ${response.statusCode} - ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 204) {
         // Success - entry deleted from server
         return;
       } else if (response.statusCode == 404) {
         // Entry not found on server - this is OK, it means it was already deleted or never synced
-        print('Entry not found on server, treating as successful delete');
+        debugPrint('Entry not found on server, treating as successful delete');
         return;
       } else if (response.statusCode == 405) {
         // Method not allowed - server doesn't support delete endpoint
@@ -243,7 +255,7 @@ class SyncService {
 
     try {
       final headers = AuthService.getAuthHeaders();
-      final response = await http.post(
+      final response = await HttpClientService.client.post(
         Uri.parse('$baseUrl/api/fuel-entries/bulk/delete'),
         headers: headers,
         body: json.encode({'user_id': userId, 'entry_ids': entryIds}),
@@ -269,7 +281,7 @@ class SyncService {
 
     try {
       final headers = AuthService.getAuthHeaders();
-      final response = await http.put(
+      final response = await HttpClientService.client.put(
         Uri.parse('$baseUrl/api/fuel-entries/$userId/${entry.id}'),
         headers: headers,
         body: json.encode({
@@ -301,7 +313,10 @@ class SyncService {
 
     try {
       final headers = AuthService.getAuthHeaders();
-      final response = await http.get(Uri.parse('$baseUrl/api/fuel-entries/$userId/$entryId'), headers: headers);
+      final response = await HttpClientService.client.get(
+        Uri.parse('$baseUrl/api/fuel-entries/$userId/$entryId'),
+        headers: headers,
+      );
 
       if (response.statusCode == 200) {
         final entryJson = json.decode(response.body);

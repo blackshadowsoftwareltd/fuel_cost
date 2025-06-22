@@ -17,6 +17,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isLoading = false;
   bool _isAuthenticated = false;
   String _selectedCurrency = '\$';
+  String? _userEmail;
 
   @override
   void initState() {
@@ -27,9 +28,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _checkAuthStatus() async {
     final isAuth = await AuthService.isAuthenticated();
+    String? email;
+    if (isAuth) {
+      email = await AuthService.getUserEmail();
+      debugPrint('Debug: Auth status: $isAuth, Email: $email'); // Debug line
+    }
     if (mounted) {
       setState(() {
         _isAuthenticated = isAuth;
+        _userEmail = email;
       });
     }
   }
@@ -240,13 +247,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-
-
   Future<void> _signOut() async {
     await AuthService.signOut();
     if (mounted) {
       setState(() {
         _isAuthenticated = false;
+        _userEmail = null;
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -331,18 +337,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   margin: const EdgeInsets.all(16.0),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [
-                        Colors.white.withValues(alpha: 0.98),
-                        Colors.white.withValues(alpha: 0.92),
-                      ],
+                      colors: [Colors.white.withValues(alpha: 0.98), Colors.white.withValues(alpha: 0.92)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                     borderRadius: BorderRadius.circular(28),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.4),
-                      width: 1.5,
-                    ),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 1.5),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.08),
@@ -383,17 +383,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   title: 'Account',
                                   children: [
                                     CustomCupertinoListTile(
-                                      icon: _isAuthenticated ? CupertinoIcons.checkmark_shield : CupertinoIcons.person_circle,
+                                      icon: _isAuthenticated
+                                          ? CupertinoIcons.checkmark_shield
+                                          : CupertinoIcons.person_circle,
                                       title: _isAuthenticated ? 'Signed In' : 'Not Signed In',
-                                      subtitle: _isAuthenticated 
-                                          ? 'Your data is being synced to the cloud'
+                                      subtitle: _isAuthenticated
+                                          ? (_userEmail != null && _userEmail!.isNotEmpty)
+                                                ? '$_userEmail\nYour data is being synced to the cloud'
+                                                : 'Your data is being synced to the cloud'
                                           : 'Sign in to sync your data across devices',
                                       onTap: !_isAuthenticated
                                           ? () async {
                                               Navigator.push(
                                                 context,
                                                 MaterialPageRoute(builder: (context) => const AuthScreen()),
-                                              ).then((_) => _checkAuthStatus());
+                                              ).then((_) {
+                                                _checkAuthStatus();
+                                                // Force rebuild after auth
+                                                if (mounted) setState(() {});
+                                              });
                                             }
                                           : () {},
                                       iconColor: _isAuthenticated ? Colors.green : Colors.orange,
@@ -416,11 +424,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                                 ),
                                               ),
                                             )
-                                          : Icon(
-                                              CupertinoIcons.checkmark_circle_fill,
-                                              color: Colors.green,
-                                              size: 20,
-                                            ),
+                                          : Icon(CupertinoIcons.checkmark_circle_fill, color: Colors.green, size: 20),
                                     ),
                                   ],
                                 ),
@@ -431,7 +435,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     CustomCupertinoListTile(
                                       icon: Icons.currency_exchange,
                                       title: 'Currency',
-                                      subtitle: 'Current: $_selectedCurrency (${CurrencyService.getCurrencyName(_selectedCurrency)})',
+                                      subtitle:
+                                          'Current: $_selectedCurrency (${CurrencyService.getCurrencyName(_selectedCurrency)})',
                                       onTap: _showCurrencyDialog,
                                       iconColor: const Color(0xFF2196F3),
                                       isFirst: true,
@@ -534,10 +539,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                           spreadRadius: -2,
                                         ),
                                       ],
-                                      border: Border.all(
-                                        color: Colors.blue.withValues(alpha: 0.2),
-                                        width: 1,
-                                      ),
+                                      border: Border.all(color: Colors.blue.withValues(alpha: 0.2), width: 1),
                                     ),
                                     child: Row(
                                       mainAxisAlignment: MainAxisAlignment.center,

@@ -19,7 +19,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStateMixin {
-
   late AnimationController _fadeAnimationController;
   late AnimationController _slideAnimationController;
   late AnimationController _staggeredAnimationController;
@@ -68,7 +67,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
 
   Future<void> _handleSync() async {
     final isAuthenticated = ref.read(authenticationProvider).value ?? false;
-    
+
     if (!isAuthenticated) {
       // Navigate to sign in screen
       final result = await Navigator.push(context, MaterialPageRoute(builder: (context) => const AuthScreen()));
@@ -93,17 +92,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
       await ref.read(syncStatusProvider.notifier).performSync();
       // Refresh fuel entries after sync
       await ref.read(fuelEntriesProvider.notifier).refresh();
-      
+
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Data synced successfully!'), backgroundColor: Colors.green)
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Data synced successfully!'), backgroundColor: Colors.green));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Sync failed: $e'), backgroundColor: Colors.red)
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Sync failed: $e'), backgroundColor: Colors.red));
       }
     }
   }
@@ -159,8 +158,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
     final totalLitersAsync = ref.watch(totalLitersProvider);
     final mileageCalculationsAsync = ref.watch(mileageCalculationsProvider);
     final currencyAsync = ref.watch(currencyProvider);
-    final authAsync = ref.watch(authenticationProvider);
-    final lastSyncAsync = ref.watch(syncStatusProvider);
+    final authAsync = ref.watch(authenticationProvider); 
 
     return Scaffold(
       body: Container(
@@ -177,6 +175,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
         ),
         child: SafeArea(
           child: SingleChildScrollView(
+            padding: EdgeInsets.only(bottom: 50.0),
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -354,8 +353,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                               data: (calculations) => _buildSummaryLine(
                                 icon: Icons.route_rounded,
                                 label: 'Total Distance',
-                                value: calculations['totalDistance']! > 0 
-                                    ? '${calculations['totalDistance']!.toStringAsFixed(0)} km' 
+                                value: calculations['totalDistance']! > 0
+                                    ? '${calculations['totalDistance']!.toStringAsFixed(0)} km'
                                     : 'N/A',
                                 color: const Color(0xFFFF9800),
                               ),
@@ -370,8 +369,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                               data: (calculations) => _buildSummaryLine(
                                 icon: Icons.directions_car_rounded,
                                 label: 'Last Trip Mileage',
-                                value: calculations['lastTripMileage']! > 0 
-                                    ? '${calculations['lastTripMileage']!.toStringAsFixed(1)} km/L' 
+                                value: calculations['lastTripMileage']! > 0
+                                    ? '${calculations['lastTripMileage']!.toStringAsFixed(1)} km/L'
                                     : 'N/A',
                                 color: const Color(0xFF4CAF50),
                               ),
@@ -386,8 +385,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                               data: (calculations) => _buildSummaryLine(
                                 icon: Icons.trending_up_rounded,
                                 label: 'Overall Mileage',
-                                value: calculations['overallMileage']! > 0 
-                                    ? '${calculations['overallMileage']!.toStringAsFixed(1)} km/L' 
+                                value: calculations['overallMileage']! > 0
+                                    ? '${calculations['overallMileage']!.toStringAsFixed(1)} km/L'
                                     : 'N/A',
                                 color: const Color(0xFF9C27B0),
                               ),
@@ -402,8 +401,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                               data: (calculations) => _buildSummaryLine(
                                 icon: Icons.keyboard_double_arrow_up_rounded,
                                 label: 'Max Mileage',
-                                value: calculations['maxMileage']! > 0 
-                                    ? '${calculations['maxMileage']!.toStringAsFixed(1)} km/L' 
+                                value: calculations['maxMileage']! > 0
+                                    ? '${calculations['maxMileage']!.toStringAsFixed(1)} km/L'
                                     : 'N/A',
                                 color: const Color(0xFF00C853),
                               ),
@@ -418,8 +417,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                               data: (calculations) => _buildSummaryLine(
                                 icon: Icons.keyboard_double_arrow_down_rounded,
                                 label: 'Min Mileage',
-                                value: calculations['minMileage']! > 0 
-                                    ? '${calculations['minMileage']!.toStringAsFixed(1)} km/L' 
+                                value: calculations['minMileage']! > 0
+                                    ? '${calculations['minMileage']!.toStringAsFixed(1)} km/L'
                                     : 'N/A',
                                 color: const Color(0xFFFF5722),
                               ),

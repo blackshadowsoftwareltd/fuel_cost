@@ -1,8 +1,10 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../constraints.dart';
+import 'http_client_service.dart';
 
 class AuthService {
   static const String _userIdKey = 'user_id';
@@ -10,11 +12,20 @@ class AuthService {
 
   static Future<Map<String, dynamic>> signIn({required String email, required String password}) async {
     try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/api/auth/signin'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({'email': email, 'password': password}),
-      );
+      final url = '$baseUrl/api/auth/signin';
+      debugPrint('DEBUG: Attempting sign-in to: $url');
+      debugPrint('DEBUG: Email: $email');
+
+      final response = await HttpClientService.client
+          .post(
+            Uri.parse(url),
+            headers: {'Content-Type': 'application/json'},
+            body: json.encode({'email': email, 'password': password}),
+          )
+          .timeout(const Duration(seconds: 30));
+
+      debugPrint('DEBUG: Response status: ${response.statusCode}');
+      debugPrint('DEBUG: Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -34,13 +45,19 @@ class AuthService {
     }
   }
 
-  static Future<Map<String, dynamic>> signUp({required String email, required String password, required String name}) async {
+  static Future<Map<String, dynamic>> signUp({
+    required String email,
+    required String password,
+    required String name,
+  }) async {
     try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/api/auth/signup'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({'email': email, 'password': password, 'name': name}),
-      );
+      final response = await HttpClientService.client
+          .post(
+            Uri.parse('$baseUrl/api/auth/signup'),
+            headers: {'Content-Type': 'application/json'},
+            body: json.encode({'email': email, 'password': password, 'name': name}),
+          )
+          .timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);

@@ -1,1 +1,1 @@
-const String baseUrl = 'http://127.0.0.1:8880';
+String get baseUrl => 'http://fuelcost.blackshadow.software';

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import '../models/fuel_entry.dart';
+import '../business_logic/fuel_calculations.dart';
 import 'fuel_chart.dart';
 
 class FuelChartDashboard extends StatefulWidget {
@@ -14,7 +15,7 @@ class FuelChartDashboard extends StatefulWidget {
 }
 
 class _FuelChartDashboardState extends State<FuelChartDashboard> {
-  String _selectedChartType = 'cost';
+  String _selectedChartType = 'mileage';
 
   @override
   Widget build(BuildContext context) {
@@ -89,9 +90,9 @@ class _FuelChartDashboardState extends State<FuelChartDashboard> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          _buildSelectorButton('mileage', 'Efficiency', Icons.trending_up),
           _buildSelectorButton('cost', 'Cost', Icons.attach_money),
           _buildSelectorButton('liters', 'Volume', Icons.local_gas_station),
-          _buildSelectorButton('mileage', 'Efficiency', Icons.trending_up),
         ],
       ),
     );
@@ -159,16 +160,57 @@ class _FuelChartDashboardState extends State<FuelChartDashboard> {
       return const SizedBox();
     }
 
-    // Calculate trending stats
+    // Calculate trending stats based on selected chart type
     final sortedEntries = List<FuelEntry>.from(widget.entries)..sort((a, b) => a.dateTime.compareTo(b.dateTime));
 
-    final recent = sortedEntries.take(sortedEntries.length ~/ 2).toList();
-    final older = sortedEntries.skip(sortedEntries.length ~/ 2).toList();
+    final midPoint = sortedEntries.length ~/ 2;
+    final recent = sortedEntries.skip(midPoint).toList();
+    final older = sortedEntries.take(midPoint).toList();
 
-    final recentAvgCost = recent.isEmpty ? 0.0 : recent.fold(0.0, (sum, e) => sum + e.totalCost) / recent.length;
-    final olderAvgCost = older.isEmpty ? 0.0 : older.fold(0.0, (sum, e) => sum + e.totalCost) / older.length;
+    double recentAvg = 0.0;
+    double olderAvg = 0.0;
+    double trend = 0.0;
+    String trendLabel = '';
+    String trendValue = '';
+    Color trendColor = Colors.grey;
 
-    final costTrend = recentAvgCost - olderAvgCost;
+    switch (_selectedChartType) {
+      case 'cost':
+        recentAvg = recent.isEmpty ? 0.0 : recent.fold(0.0, (sum, e) => sum + e.totalCost) / recent.length;
+        olderAvg = older.isEmpty ? 0.0 : older.fold(0.0, (sum, e) => sum + e.totalCost) / older.length;
+        trend = recentAvg - olderAvg;
+        trendLabel = trend > 0 ? 'Costs trending up' : 'Costs trending down';
+        trendValue = '${widget.currency}${trend.abs().toStringAsFixed(1)}';
+        trendColor = trend > 0 ? Colors.red : Colors.green;
+        break;
+
+      case 'liters':
+        recentAvg = recent.isEmpty ? 0.0 : recent.fold(0.0, (sum, e) => sum + e.liters) / recent.length;
+        olderAvg = older.isEmpty ? 0.0 : older.fold(0.0, (sum, e) => sum + e.liters) / older.length;
+        trend = recentAvg - olderAvg;
+        trendLabel = trend > 0 ? 'Volume trending up' : 'Volume trending down';
+        trendValue = '${trend.abs().toStringAsFixed(1)}L';
+        trendColor = trend > 0 ? Colors.red : Colors.green;
+        break;
+
+      case 'mileage':
+        // Calculate mileage for recent and older periods
+        if (recent.length > 1) {
+          final recentTotalLiters = recent.fold(0.0, (sum, e) => sum + e.liters);
+          final recentMileageData = FuelCalculations.calculateMileageMetrics(recent, recentTotalLiters);
+          recentAvg = recentMileageData['overallMileage'] ?? 0.0;
+        }
+        if (older.length > 1) {
+          final olderTotalLiters = older.fold(0.0, (sum, e) => sum + e.liters);
+          final olderMileageData = FuelCalculations.calculateMileageMetrics(older, olderTotalLiters);
+          olderAvg = olderMileageData['overallMileage'] ?? 0.0;
+        }
+        trend = recentAvg - olderAvg;
+        trendLabel = trend > 0 ? 'Efficiency improving' : 'Efficiency declining';
+        trendValue = '${trend.abs().toStringAsFixed(1)} km/L';
+        trendColor = trend > 0 ? Colors.green : Colors.red;
+        break;
+    }
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -188,23 +230,20 @@ class _FuelChartDashboardState extends State<FuelChartDashboard> {
       child: Row(
         children: [
           Icon(
-            costTrend > 0 ? CupertinoIcons.arrow_up_right : CupertinoIcons.arrow_down_right,
-            color: costTrend > 0 ? Colors.red : Colors.green,
+            trend > 0 ? CupertinoIcons.arrow_up_right : CupertinoIcons.arrow_down_right,
+            color: trendColor,
             size: 20,
           ),
           const SizedBox(width: 8),
-          Text(
-            costTrend > 0 ? 'Costs trending up' : 'Costs trending down',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.grey.shade700),
-          ),
-          const Spacer(),
-          Text(
-            '${widget.currency}${costTrend.abs().toStringAsFixed(1)}',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: costTrend > 0 ? Colors.red : Colors.green,
+          Expanded(
+            child: Text(
+              trendLabel,
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.grey.shade700),
             ),
+          ),
+          Text(
+            trendValue,
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: trendColor),
           ),
         ],
       ),
