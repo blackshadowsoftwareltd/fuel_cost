@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/fuel_storage_service.dart';
 import '../services/auth_service.dart';
 import '../services/currency_service.dart';
@@ -379,54 +380,53 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             child: Column(
                               children: [
                                 // Account Section
-                                CupertinoSection(
-                                  title: 'Account',
-                                  children: [
-                                    CustomCupertinoListTile(
-                                      icon: _isAuthenticated
-                                          ? CupertinoIcons.checkmark_shield
-                                          : CupertinoIcons.person_circle,
-                                      title: _isAuthenticated ? 'Signed In' : 'Not Signed In',
-                                      subtitle: _isAuthenticated
-                                          ? (_userEmail != null && _userEmail!.isNotEmpty)
-                                                ? '$_userEmail\nYour data is being synced to the cloud'
-                                                : 'Your data is being synced to the cloud'
-                                          : 'Sign in to sync your data across devices',
-                                      onTap: !_isAuthenticated
-                                          ? () async {
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(builder: (context) => const AuthScreen()),
-                                              ).then((_) {
-                                                _checkAuthStatus();
-                                                // Force rebuild after auth
-                                                if (mounted) setState(() {});
-                                              });
-                                            }
-                                          : () {},
-                                      iconColor: _isAuthenticated ? Colors.green : Colors.orange,
-                                      isFirst: true,
-                                      isLast: true,
-                                      isLoading: _isLoading,
-                                      trailing: !_isAuthenticated
-                                          ? Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                              decoration: BoxDecoration(
-                                                color: const Color(0xFF2196F3),
-                                                borderRadius: BorderRadius.circular(16),
-                                              ),
-                                              child: const Text(
-                                                'Sign In',
-                                                style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w600,
+                                Consumer(
+                                  builder: (context, state, __) {
+                                    return CupertinoSection(
+                                      title: 'Account',
+                                      children: [
+                                        CustomCupertinoListTile(
+                                          icon: _isAuthenticated
+                                              ? CupertinoIcons.checkmark_shield
+                                              : CupertinoIcons.person_circle,
+                                          title: _isAuthenticated ? 'Signed In' : 'Not Signed In',
+                                          subtitle: _isAuthenticated
+                                              ? (_userEmail != null && _userEmail!.isNotEmpty)
+                                                    ? '$_userEmail\nYour data is being synced to the cloud'
+                                                    : 'Your data is being synced to the cloud'
+                                              : 'Sign in to sync your data across devices',
+                                          onTap: !_isAuthenticated
+                                              ? () async => await AuthService.handleSync(context, state)
+                                              : () {},
+                                          iconColor: _isAuthenticated ? Colors.green : Colors.orange,
+                                          isFirst: true,
+                                          isLast: true,
+                                          isLoading: _isLoading,
+                                          trailing: !_isAuthenticated
+                                              ? Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(0xFF2196F3),
+                                                    borderRadius: BorderRadius.circular(16),
+                                                  ),
+                                                  child: const Text(
+                                                    'Sign In',
+                                                    style: TextStyle(
+                                                      color: Colors.white,
+                                                      fontSize: 12,
+                                                      fontWeight: FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                )
+                                              : Icon(
+                                                  CupertinoIcons.checkmark_circle_fill,
+                                                  color: Colors.green,
+                                                  size: 20,
                                                 ),
-                                              ),
-                                            )
-                                          : Icon(CupertinoIcons.checkmark_circle_fill, color: Colors.green, size: 20),
-                                    ),
-                                  ],
+                                        ),
+                                      ],
+                                    );
+                                  },
                                 ),
                                 // Currency Selection Section
                                 CupertinoSection(

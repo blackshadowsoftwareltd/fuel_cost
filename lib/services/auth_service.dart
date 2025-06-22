@@ -1,12 +1,58 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../constraints.dart';
+import '../providers/auth_provider.dart';
+import '../providers/fuel_entries_provider.dart';
+import '../providers/sync_provider.dart';
+import '../screens/auth_screen.dart' show AuthScreen;
 import 'http_client_service.dart';
 
 class AuthService {
+  static Future<void> handleSync(BuildContext c, WidgetRef ref) async {
+    final isAuthenticated = ref.read(authenticationProvider).value ?? false;
+
+    if (!isAuthenticated) {
+      // Navigate to sign in screen
+      final result = await Navigator.push(c, MaterialPageRoute(builder: (context) => const AuthScreen()));
+
+      // If sign in was successful, immediately sync
+      if (result == true) {
+        await ref.read(authenticationProvider.notifier).refresh();
+        final newAuthState = ref.read(authenticationProvider).value ?? false;
+        if (newAuthState) {
+          await _performSync(c, ref);
+        }
+      }
+    } else {
+      // User is already signed in, just sync
+      await _performSync(c, ref);
+    }
+  }
+
+  static Future<void> _performSync(BuildContext c, WidgetRef ref) async {
+    try {
+      // Use the proper sync provider instead of direct fuel entries sync
+      await ref.read(syncStatusProvider.notifier).performSync();
+      // Refresh fuel entries after sync
+      await ref.read(fuelEntriesProvider.notifier).refresh();
+
+      if (c.mounted) {
+        ScaffoldMessenger.of(
+          c,
+        ).showSnackBar(const SnackBar(content: Text('Data synced successfully!'), backgroundColor: Colors.green));
+      }
+    } catch (e) {
+      if (c.mounted) {
+        ScaffoldMessenger.of(c).showSnackBar(SnackBar(content: Text('Sync failed: $e'), backgroundColor: Colors.red));
+      }
+    }
+  }
+
   static const String _userIdKey = 'user_id';
   static const String _userEmailKey = 'user_email';
 

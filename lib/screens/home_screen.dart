@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../services/auth_service.dart' show AuthService;
 import '../widgets/widgets.dart';
 import '../providers/fuel_entries_provider.dart';
 import '../providers/auth_provider.dart';
@@ -8,8 +9,7 @@ import '../providers/sync_provider.dart';
 import 'add_fuel_screen.dart';
 import 'fuel_history_screen.dart';
 import 'settings_screen.dart';
-import 'how_to_use_screen.dart';
-import 'auth_screen.dart';
+import 'how_to_use_screen.dart'; 
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -65,48 +65,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
     super.dispose();
   }
 
-  Future<void> _handleSync() async {
-    final isAuthenticated = ref.read(authenticationProvider).value ?? false;
-
-    if (!isAuthenticated) {
-      // Navigate to sign in screen
-      final result = await Navigator.push(context, MaterialPageRoute(builder: (context) => const AuthScreen()));
-
-      // If sign in was successful, immediately sync
-      if (result == true) {
-        await ref.read(authenticationProvider.notifier).refresh();
-        final newAuthState = ref.read(authenticationProvider).value ?? false;
-        if (newAuthState) {
-          await _performSync();
-        }
-      }
-    } else {
-      // User is already signed in, just sync
-      await _performSync();
-    }
-  }
-
-  Future<void> _performSync() async {
-    try {
-      // Use the proper sync provider instead of direct fuel entries sync
-      await ref.read(syncStatusProvider.notifier).performSync();
-      // Refresh fuel entries after sync
-      await ref.read(fuelEntriesProvider.notifier).refresh();
-
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Data synced successfully!'), backgroundColor: Colors.green));
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Sync failed: $e'), backgroundColor: Colors.red));
-      }
-    }
-  }
-
   String _getButtonSubtitle(String title) {
     switch (title) {
       case 'Add Fuel Entry':
@@ -158,7 +116,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
     final totalLitersAsync = ref.watch(totalLitersProvider);
     final mileageCalculationsAsync = ref.watch(mileageCalculationsProvider);
     final currencyAsync = ref.watch(currencyProvider);
-    final authAsync = ref.watch(authenticationProvider); 
+    final authAsync = ref.watch(authenticationProvider);
 
     return Scaffold(
       body: Container(
@@ -509,19 +467,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                           data: (lastSyncTime) => SyncButton(
                             isSyncing: false,
                             isAuthenticated: isAuthenticated,
-                            onPressed: _handleSync,
+                            onPressed: () async => await AuthService.handleSync(context, ref),
                             lastSyncTime: lastSyncTime,
                           ),
                           loading: () => SyncButton(
                             isSyncing: true,
                             isAuthenticated: isAuthenticated,
-                            onPressed: _handleSync,
+                            onPressed: () async => await AuthService.handleSync(context, ref),
                             lastSyncTime: null,
                           ),
                           error: (e, _) => SyncButton(
                             isSyncing: false,
                             isAuthenticated: isAuthenticated,
-                            onPressed: _handleSync,
+                            onPressed: () async => await AuthService.handleSync(context, ref),
                             lastSyncTime: null,
                           ),
                         );
