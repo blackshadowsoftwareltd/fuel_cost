@@ -173,12 +173,14 @@ class FuelChart extends StatelessWidget {
 
     final maxY = spots.isEmpty ? 10.0 : spots.map((e) => e.y).reduce((a, b) => a > b ? a : b);
     final minY = spots.isEmpty ? 0.0 : spots.map((e) => e.y).reduce((a, b) => a < b ? a : b);
+    final yRange = maxY == minY ? (maxY == 0 ? 4.0 : maxY) : (maxY - minY);
+    final yInterval = yRange / 4;
 
     return LineChartData(
       gridData: FlGridData(
         show: true,
         drawVerticalLine: false,
-        horizontalInterval: (maxY - minY) / 4,
+        horizontalInterval: yInterval,
         getDrawingHorizontalLine: (value) {
           return FlLine(color: Colors.grey.withValues(alpha: 0.2), strokeWidth: 1);
         },
@@ -197,7 +199,7 @@ class FuelChart extends StatelessWidget {
               if (index >= 0 && index < sortedEntries.length) {
                 final entry = sortedEntries[index];
                 return SideTitleWidget(
-                  axisSide: meta.axisSide,
+                  meta: meta,
                   child: Text(
                     '${entry.dateTime.day}/${entry.dateTime.month}',
                     style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.w400, fontSize: 10),
@@ -211,7 +213,7 @@ class FuelChart extends StatelessWidget {
         leftTitles: AxisTitles(
           sideTitles: SideTitles(
             showTitles: true,
-            interval: (maxY - minY) / 4,
+            interval: yInterval,
             getTitlesWidget: (double value, TitleMeta meta) {
               return Text(
                 _formatYAxisValue(value),
@@ -295,7 +297,7 @@ class FuelChart extends StatelessWidget {
         final totalDistance = FuelCalculations.calculateTotalDistance(sortedEntries);
         final totalFuel = sortedEntries.fold(0.0, (sum, entry) => sum + entry.liters);
         final totalFuelMinusLast = totalFuel - sortedEntries.last.liters;
-        
+
         if (totalFuelMinusLast > 0) {
           average = totalDistance / totalFuelMinusLast;
           total = totalDistance; // Show total distance
@@ -307,7 +309,11 @@ class FuelChart extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: [
-        _buildStatItem('Total', chartType == 'mileage' ? '${total.toStringAsFixed(0)} km' : '${total.toStringAsFixed(1)}$unit', _getChartColor()),
+        _buildStatItem(
+          'Total',
+          chartType == 'mileage' ? '${total.toStringAsFixed(0)} km' : '${total.toStringAsFixed(1)}$unit',
+          _getChartColor(),
+        ),
         _buildStatItem('Average', '${average.toStringAsFixed(1)}$unit', _getChartColor()),
         _buildStatItem('Entries', '${sortedEntries.length}', _getChartColor()),
       ],

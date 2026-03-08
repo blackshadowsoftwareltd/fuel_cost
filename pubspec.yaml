@@ -37,11 +37,15 @@ dependencies:
   shared_preferences: ^2.2.2
   intl: ^0.19.0
   http: ^1.1.0
-  fl_chart: ^0.69.0
+  fl_chart: ^0.71.0
   
   # Riverpod for state management
   flutter_riverpod: ^2.5.1
   riverpod_annotation: ^2.3.5
+  uuid: ^4.5.3
+  path_provider: ^2.1.5
+  isar: 3.1.0+1
+  isar_flutter_libs: 3.1.0+1
 
 dev_dependencies:
   flutter_test:
@@ -57,8 +61,8 @@ dev_dependencies:
   # Riverpod code generation
   riverpod_generator: ^2.4.3
   build_runner: ^2.4.8
-  custom_lint: ^0.6.4
-  riverpod_lint: ^2.3.12
+  # custom_lint: ^0.7.1 # temporarily removed - conflicts with isar_generator analyzer version
+  # riverpod_lint: ^2.3.12
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

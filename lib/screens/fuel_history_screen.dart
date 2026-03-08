@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/fuel_entry.dart';
 import '../services/fuel_storage_service.dart';
-import '../services/auth_service.dart';
-import '../services/sync_service.dart';
+// import '../services/auth_service.dart';
+// import '../services/sync_service.dart';
 import '../services/currency_service.dart';
 import '../widgets/widgets.dart';
 
@@ -116,64 +116,7 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> with TickerProvid
         );
       }
 
-      // Then try to delete from server if user is authenticated
-      final isAuthenticated = await AuthService.isAuthenticated();
-      if (isAuthenticated) {
-        try {
-          await SyncService.deleteEntryFromServer(id);
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Row(
-                  children: [
-                    const Icon(Icons.cloud_done, color: Colors.white),
-                    const SizedBox(width: 12),
-                    const Text('Entry also removed from server!'),
-                  ],
-                ),
-                backgroundColor: Colors.green,
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-            );
-          }
-        } catch (e) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Row(
-                  children: [
-                    const Icon(Icons.warning, color: Colors.white),
-                    const SizedBox(width: 12),
-                    Expanded(child: Text('Server sync failed: ${e.toString().replaceFirst('Exception: ', '')}')),
-                  ],
-                ),
-                backgroundColor: Colors.orange,
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                duration: Duration(seconds: 4),
-              ),
-            );
-          }
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.info, color: Colors.white),
-                  const SizedBox(width: 12),
-                  const Text('Sign in to sync deletion with server'),
-                ],
-              ),
-              backgroundColor: Colors.blue,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-          );
-        }
-      }
+      // API calls commented out
 
       // Reload data to refresh the UI
       await _loadData();
@@ -378,43 +321,24 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> with TickerProvid
     _syncAnimationController.repeat();
 
     try {
-      final isAuthenticated = await AuthService.isAuthenticated();
-      if (isAuthenticated) {
-        await _loadData();
+      // API calls commented out - just reload local data
+      await _loadData();
 
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Row(
-                children: [
-                  Icon(Icons.check_circle, color: Colors.white),
-                  SizedBox(width: 12),
-                  Text('Successfully synced with server!'),
-                ],
-              ),
-              backgroundColor: Colors.green,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 12),
+                Text('Data refreshed!'),
+              ],
             ),
-          );
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Row(
-                children: [
-                  Icon(Icons.info, color: Colors.white),
-                  SizedBox(width: 12),
-                  Text('Please sign in to sync with server'),
-                ],
-              ),
-              backgroundColor: Colors.orange,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-          );
-        }
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {

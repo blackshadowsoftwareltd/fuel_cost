@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/fuel_entry.dart';
 import '../services/fuel_storage_service.dart';
-import '../services/auth_service.dart';
-import '../services/sync_service.dart';
+// import '../services/auth_service.dart';
+// import '../services/sync_service.dart';
 import '../services/currency_service.dart';
 import '../widgets/widgets.dart';
 
@@ -160,32 +160,11 @@ class _AddFuelScreenState extends State<AddFuelScreen> with TickerProviderStateM
 
       await FuelStorageService.saveFuelEntry(entry);
 
-      // Try to upload to server if user is authenticated
-      final isAuthenticated = await AuthService.isAuthenticated();
-      if (isAuthenticated) {
-        try {
-          await SyncService.uploadEntry(entry);
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Fuel entry saved and synced successfully!'), backgroundColor: Colors.green),
-            );
-          }
-        } catch (e) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Entry saved locally. Sync failed: $e'), backgroundColor: Colors.orange),
-            );
-          }
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Fuel entry saved locally! Sign in to sync with server.'),
-              backgroundColor: Colors.blue,
-            ),
-          );
-        }
+      // API calls commented out
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Fuel entry saved successfully!'), backgroundColor: Colors.green),
+        );
       }
 
       if (mounted) {

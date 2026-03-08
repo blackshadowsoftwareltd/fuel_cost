@@ -1,33 +1,37 @@
-class FuelEntry {
-  final String id;
-  final double liters;
-  final double pricePerLiter;
-  final double totalCost;
-  final DateTime dateTime;
-  final double? odometerReading;
+import 'package:isar/isar.dart';
+import 'package:uuid/uuid.dart';
 
-  FuelEntry({
-    required this.id,
-    required this.liters,
-    required this.pricePerLiter,
-    required this.totalCost,
-    required this.dateTime,
-    this.odometerReading,
-  });
+part 'fuel_entry.g.dart';
+
+const _uuid = Uuid();
+
+@collection
+class FuelEntry {
+  Id isarId = Isar.autoIncrement;
+
+  @Index(unique: true)
+  late String id;
+
+  late double liters;
+  late double pricePerLiter;
+  late double totalCost;
+  late DateTime dateTime;
+  double? odometerReading;
+
+  FuelEntry();
 
   factory FuelEntry.create({
     required double liters,
     required double pricePerLiter,
     double? odometerReading,
   }) {
-    return FuelEntry(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      liters: liters,
-      pricePerLiter: pricePerLiter,
-      totalCost: liters * pricePerLiter,
-      dateTime: DateTime.now(),
-      odometerReading: odometerReading,
-    );
+    return FuelEntry()
+      ..id = _uuid.v4()
+      ..liters = liters
+      ..pricePerLiter = pricePerLiter
+      ..totalCost = liters * pricePerLiter
+      ..dateTime = DateTime.now()
+      ..odometerReading = odometerReading;
   }
 
   Map<String, dynamic> toJson() {
@@ -42,24 +46,25 @@ class FuelEntry {
   }
 
   factory FuelEntry.fromJson(Map<String, dynamic> json) {
-    return FuelEntry(
-      id: json['id'],
-      liters: json['liters'],
-      pricePerLiter: json['pricePerLiter'],
-      totalCost: json['totalCost'],
-      dateTime: DateTime.parse(json['dateTime']),
-      odometerReading: json['odometerReading']?.toDouble(),
-    );
+    return FuelEntry()
+      ..id = json['id']
+      ..liters = (json['liters'] as num).toDouble()
+      ..pricePerLiter = (json['pricePerLiter'] as num).toDouble()
+      ..totalCost = (json['totalCost'] as num).toDouble()
+      ..dateTime = DateTime.parse(json['dateTime'])
+      ..odometerReading = json['odometerReading'] != null
+          ? (json['odometerReading'] as num).toDouble()
+          : null;
   }
 
   static double? calculateMileage(FuelEntry current, FuelEntry previous) {
     if (current.odometerReading == null || previous.odometerReading == null) {
       return null;
     }
-    
+
     final distance = current.odometerReading! - previous.odometerReading!;
     if (distance <= 0) return null;
-    
+
     return distance / current.liters;
   }
 }
