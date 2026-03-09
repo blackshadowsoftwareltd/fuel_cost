@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:isar/isar.dart';
 import '../models/fuel_entry.dart';
 import 'database_service.dart';
@@ -125,6 +126,56 @@ class FuelStorageService {
       };
     }
     return null;
+  }
+
+  static Future<void> updateFuelEntry(FuelEntry entry) async {
+    final isar = await DatabaseService.database;
+    await isar.writeTxn(() async {
+      await isar.fuelEntrys.put(entry);
+    });
+  }
+
+  static Future<String> exportToCsv() async {
+    final entries = await getFuelEntries();
+    final buffer = StringBuffer();
+    buffer.writeln('id,liters,pricePerLiter,totalCost,dateTime,odometerReading');
+    for (final entry in entries) {
+      buffer.writeln(
+        '${entry.id},${entry.liters},${entry.pricePerLiter},${entry.totalCost},${entry.dateTime.toIso8601String()},${entry.odometerReading ?? ''}',
+      );
+    }
+    return buffer.toString();
+  }
+
+  static Future<int> importFromCsv(String csvContent) async {
+    final lines = csvContent.trim().split('\n');
+    if (lines.length < 2) return 0;
+
+    // Skip header
+    int imported = 0;
+    for (int i = 1; i < lines.length; i++) {
+      final line = lines[i].trim();
+      if (line.isEmpty) continue;
+
+      final parts = line.split(',');
+      if (parts.length < 5) continue;
+
+      try {
+        final entry = FuelEntry()
+          ..id = parts[0]
+          ..liters = double.parse(parts[1])
+          ..pricePerLiter = double.parse(parts[2])
+          ..totalCost = double.parse(parts[3])
+          ..dateTime = DateTime.parse(parts[4])
+          ..odometerReading = parts.length > 5 && parts[5].isNotEmpty ? double.parse(parts[5]) : null;
+
+        await saveFuelEntry(entry);
+        imported++;
+      } catch (e) {
+        debugPrint('Skipping invalid CSV row $i: $e');
+      }
+    }
+    return imported;
   }
 
   static Future<void> clearAllData() async {

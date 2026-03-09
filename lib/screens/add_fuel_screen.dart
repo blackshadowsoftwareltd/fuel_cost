@@ -8,7 +8,11 @@ import '../services/currency_service.dart';
 import '../widgets/widgets.dart';
 
 class AddFuelScreen extends StatefulWidget {
-  const AddFuelScreen({super.key});
+  final FuelEntry? existingEntry;
+
+  const AddFuelScreen({super.key, this.existingEntry});
+
+  bool get isEditing => existingEntry != null;
 
   @override
   State<AddFuelScreen> createState() => _AddFuelScreenState();
@@ -65,10 +69,22 @@ class _AddFuelScreenState extends State<AddFuelScreen> with TickerProviderStateM
       end: 1.0,
     ).animate(CurvedAnimation(parent: _staggeredAnimationController, curve: Curves.easeOutCubic));
 
-    _loadCurrentOdometer();
+    if (!widget.isEditing) {
+      _loadCurrentOdometer();
+    }
     _loadCurrency();
     _litersController.addListener(_calculateMileage);
     _odometerController.addListener(_calculateMileage);
+
+    // Pre-populate fields if editing
+    if (widget.isEditing) {
+      final entry = widget.existingEntry!;
+      _litersController.text = entry.liters.toString();
+      _priceController.text = entry.pricePerLiter.toString();
+      if (entry.odometerReading != null) {
+        _odometerController.text = entry.odometerReading.toString();
+      }
+    }
 
     // Start animations
     _fadeAnimationController.forward();
@@ -156,14 +172,25 @@ class _AddFuelScreenState extends State<AddFuelScreen> with TickerProviderStateM
       final pricePerLiter = double.parse(_priceController.text);
       final odometerReading = _odometerController.text.isEmpty ? null : double.parse(_odometerController.text);
 
-      final entry = FuelEntry.create(liters: liters, pricePerLiter: pricePerLiter, odometerReading: odometerReading);
+      if (widget.isEditing) {
+        final entry = widget.existingEntry!
+          ..liters = liters
+          ..pricePerLiter = pricePerLiter
+          ..totalCost = liters * pricePerLiter
+          ..odometerReading = odometerReading;
 
-      await FuelStorageService.saveFuelEntry(entry);
+        await FuelStorageService.updateFuelEntry(entry);
+      } else {
+        final entry = FuelEntry.create(liters: liters, pricePerLiter: pricePerLiter, odometerReading: odometerReading);
+        await FuelStorageService.saveFuelEntry(entry);
+      }
 
-      // API calls commented out
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Fuel entry saved successfully!'), backgroundColor: Colors.green),
+          SnackBar(
+            content: Text(widget.isEditing ? 'Fuel entry updated!' : 'Fuel entry saved successfully!'),
+            backgroundColor: Colors.green,
+          ),
         );
       }
 
@@ -235,7 +262,7 @@ class _AddFuelScreenState extends State<AddFuelScreen> with TickerProviderStateM
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Add Fuel Entry',
+                                  widget.isEditing ? 'Edit Fuel Entry' : 'Add Fuel Entry',
                                   style: TextStyle(
                                     fontSize: 24,
                                     fontWeight: FontWeight.bold,
@@ -244,7 +271,7 @@ class _AddFuelScreenState extends State<AddFuelScreen> with TickerProviderStateM
                                   ),
                                 ),
                                 Text(
-                                  'Track your fuel consumption',
+                                  widget.isEditing ? 'Update your fuel entry' : 'Track your fuel consumption',
                                   style: TextStyle(fontSize: 14, color: Colors.white.withValues(alpha: 0.8)),
                                 ),
                               ],
@@ -341,7 +368,7 @@ class _AddFuelScreenState extends State<AddFuelScreen> with TickerProviderStateM
                                       if (number == null || number < 0) {
                                         return 'Please enter a valid positive number';
                                       }
-                                      if (_currentOdometer != null && number < _currentOdometer!) {
+                                      if (!widget.isEditing && _currentOdometer != null && number < _currentOdometer!) {
                                         return 'Odometer reading cannot be less than last recorded (${_currentOdometer!.toStringAsFixed(0)} km)';
                                       }
                                     }
@@ -430,13 +457,13 @@ class _AddFuelScreenState extends State<AddFuelScreen> with TickerProviderStateM
                                     height: 24,
                                     child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                                   )
-                                : const Row(
+                                : Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Icon(Icons.save, color: Colors.white, size: 24),
-                                      SizedBox(width: 12),
+                                      const Icon(Icons.save, color: Colors.white, size: 24),
+                                      const SizedBox(width: 12),
                                       Text(
-                                        'Save Fuel Entry',
+                                        widget.isEditing ? 'Update Entry' : 'Save Fuel Entry',
                                         style: TextStyle(
                                           fontSize: 18,
                                           fontWeight: FontWeight.w600,

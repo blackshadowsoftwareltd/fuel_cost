@@ -6,6 +6,7 @@ class FuelEntryCard extends StatelessWidget {
   final FuelEntry entry;
   final String currency;
   final VoidCallback onDelete;
+  final VoidCallback? onEdit;
   final int index;
   final Animation<double> animation;
 
@@ -14,6 +15,7 @@ class FuelEntryCard extends StatelessWidget {
     required this.entry,
     required this.currency,
     required this.onDelete,
+    this.onEdit,
     required this.index,
     required this.animation,
   });
@@ -121,23 +123,6 @@ class FuelEntryCard extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 8),
-          Material(
-            color: Colors.transparent,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(12),
-              onTap: onDelete,
-              child: Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.red.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.red.withValues(alpha: 0.2), width: 1),
-                ),
-                child: const Icon(Icons.delete_rounded, color: Colors.red, size: 20),
-              ),
-            ),
-          ),
         ],
       ),
     ];
@@ -170,37 +155,16 @@ class FuelEntryCard extends StatelessWidget {
               ),
             ],
           ),
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.green.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  '$currency${entry.totalCost.toStringAsFixed(2)}',
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.green),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(10),
-                  onTap: onDelete,
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.red.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.red.withValues(alpha: 0.2), width: 1),
-                    ),
-                    child: const Icon(Icons.delete_rounded, color: Colors.red, size: 18),
-                  ),
-                ),
-              ),
-            ],
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.green.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              '$currency${entry.totalCost.toStringAsFixed(2)}',
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.green),
+            ),
           ),
         ],
       ),
@@ -278,7 +242,14 @@ class FuelEntryCard extends StatelessWidget {
           offset: Offset(0, 30 * (1 - delayedValue)),
           child: Opacity(
             opacity: dop,
-            child: Container(
+            child: GestureDetector(
+              onTapUp: (details) {
+                _showPopupMenu(context, details.globalPosition);
+              },
+              onLongPress: () {
+                _showBottomSheet(context);
+              },
+              child: Container(
               margin: EdgeInsets.only(
                 left: MediaQuery.of(context).size.width < 400 ? 12 : 16,
                 right: MediaQuery.of(context).size.width < 400 ? 12 : 16,
@@ -326,6 +297,90 @@ class FuelEntryCard extends StatelessWidget {
                   );
                 },
               ),
+            ),
+          ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showPopupMenu(BuildContext context, Offset position) {
+    showMenu<String>(
+      context: context,
+      position: RelativeRect.fromLTRB(position.dx, position.dy, position.dx + 1, position.dy + 1),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 8,
+      items: [
+        PopupMenuItem<String>(
+          value: 'edit',
+          child: Row(
+            children: [
+              Icon(Icons.edit_rounded, color: Colors.blue, size: 20),
+              const SizedBox(width: 12),
+              const Text('Edit', style: TextStyle(fontWeight: FontWeight.w500)),
+            ],
+          ),
+        ),
+        PopupMenuItem<String>(
+          value: 'delete',
+          child: Row(
+            children: [
+              Icon(Icons.delete_rounded, color: Colors.red, size: 20),
+              const SizedBox(width: 12),
+              const Text('Delete', style: TextStyle(fontWeight: FontWeight.w500, color: Colors.red)),
+            ],
+          ),
+        ),
+      ],
+    ).then((value) {
+      if (value == 'edit') {
+        onEdit?.call();
+      } else if (value == 'delete') {
+        onDelete();
+      }
+    });
+  }
+
+  void _showBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ListTile(
+                  leading: const Icon(Icons.edit_rounded, color: Colors.blue),
+                  title: const Text('Edit', style: TextStyle(fontWeight: FontWeight.w500)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    onEdit?.call();
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.delete_rounded, color: Colors.red),
+                  title: const Text('Delete', style: TextStyle(fontWeight: FontWeight.w500, color: Colors.red)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    onDelete();
+                  },
+                ),
+              ],
             ),
           ),
         );

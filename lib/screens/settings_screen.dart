@@ -1,6 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import '../services/fuel_storage_service.dart';
 import '../services/auth_service.dart';
 import '../services/currency_service.dart';
@@ -248,6 +252,106 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _exportCsv() async {
+    setState(() => _isLoading = true);
+    try {
+      final csvContent = await FuelStorageService.exportToCsv();
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/fuel_entries.csv');
+      await file.writeAsString(csvContent);
+
+      final box = context.findRenderObject() as RenderBox?;
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        text: 'Fuel Cost Export',
+        sharePositionOrigin: box != null
+            ? box.localToGlobal(Offset.zero) & box.size
+            : const Rect.fromLTWH(0, 0, 100, 100),
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 12),
+                Text('CSV exported successfully'),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+        );
+      }
+    } catch (e, stackTrace) {
+      debugPrint('Export CSV error: $e');
+      debugPrint('Stack trace: $stackTrace');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error exporting CSV: $e'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _importCsv() async {
+    setState(() => _isLoading = true);
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['csv'],
+      );
+
+      if (result == null || result.files.single.path == null) {
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      final file = File(result.files.single.path!);
+      final csvContent = await file.readAsString();
+      final imported = await FuelStorageService.importFromCsv(csvContent);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 12),
+                Text('$imported entries imported successfully'),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error importing CSV: $e'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   Future<void> _signOut() async {
     await AuthService.signOut();
     if (mounted) {
@@ -440,6 +544,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       onTap: _showCurrencyDialog,
                                       iconColor: const Color(0xFF2196F3),
                                       isFirst: true,
+                                      isLast: true,
+                                      isLoading: _isLoading,
+                                    ),
+                                  ],
+                                ),
+
+                                // Export & Import Section
+                                CupertinoSection(
+                                  title: 'Export & Import',
+                                  children: [
+                                    CustomCupertinoListTile(
+                                      icon: Icons.file_upload_outlined,
+                                      title: 'Export to CSV',
+                                      subtitle: 'Export all fuel entries as a CSV file',
+                                      onTap: _exportCsv,
+                                      iconColor: const Color(0xFF4CAF50),
+                                      isFirst: true,
+                                      isLoading: _isLoading,
+                                    ),
+                                    CustomCupertinoListTile(
+                                      icon: Icons.file_download_outlined,
+                                      title: 'Import from CSV',
+                                      subtitle: 'Import fuel entries from a CSV file',
+                                      onTap: () => _showConfirmationDialog(
+                                        title: 'Import CSV',
+                                        message: 'Importing will add entries from the CSV file. Existing entries with the same ID will be updated.',
+                                        confirmText: 'Import',
+                                        confirmColor: const Color(0xFF2196F3),
+                                        onConfirm: _importCsv,
+                                      ),
+                                      iconColor: const Color(0xFF2196F3),
                                       isLast: true,
                                       isLoading: _isLoading,
                                     ),

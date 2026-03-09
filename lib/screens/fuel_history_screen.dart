@@ -5,6 +5,7 @@ import '../services/fuel_storage_service.dart';
 // import '../services/sync_service.dart';
 import '../services/currency_service.dart';
 import '../widgets/widgets.dart';
+import 'add_fuel_screen.dart';
 
 class FuelHistoryScreen extends StatefulWidget {
   const FuelHistoryScreen({super.key});
@@ -280,6 +281,7 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> with TickerProvid
                               entry: entry,
                               currency: _currency,
                               onDelete: () => _showDeleteDialog(entry.id),
+                              onEdit: () => _editEntry(entry),
                               index: index,
                               animation: _cardSlideAnimation,
                             );
@@ -298,6 +300,14 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> with TickerProvid
 
 
 
+
+  void _editEntry(FuelEntry entry) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => AddFuelScreen(existingEntry: entry)),
+    );
+    _loadData();
+  }
 
   void _showDeleteDialog(String entryId) {
     showDialog(
