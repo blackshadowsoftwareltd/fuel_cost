@@ -282,6 +282,7 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> with TickerProvid
                               currency: _currency,
                               onDelete: () => _showDeleteDialog(entry.id),
                               onEdit: () => _editEntry(entry),
+                              onChangeTime: () => _changeEntryTime(entry),
                               index: index,
                               animation: _cardSlideAnimation,
                             );
@@ -300,6 +301,43 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> with TickerProvid
 
 
 
+
+  Future<void> _changeEntryTime(FuelEntry entry) async {
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: entry.dateTime,
+      firstDate: DateTime(2000),
+      lastDate: DateTime.now(),
+    );
+    if (pickedDate == null || !mounted) return;
+
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(entry.dateTime),
+    );
+    if (pickedTime == null || !mounted) return;
+
+    final newDateTime = DateTime(
+      pickedDate.year,
+      pickedDate.month,
+      pickedDate.day,
+      pickedTime.hour,
+      pickedTime.minute,
+    );
+
+    entry.dateTime = newDateTime;
+    await FuelStorageService.updateFuelEntry(entry);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Entry time updated'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+    _loadData();
+  }
 
   void _editEntry(FuelEntry entry) async {
     await Navigator.push(

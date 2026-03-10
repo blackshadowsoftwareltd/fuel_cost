@@ -96,7 +96,8 @@ class FuelStorageService {
 
     final distance = currentOdometer - lastEntry.odometerReading!;
     if (distance > 0) {
-      return distance / liters;
+      // Fuel at last entry was consumed during this trip
+      return distance / lastEntry.liters;
     }
     return null;
   }
@@ -115,12 +116,13 @@ class FuelStorageService {
 
     final distance = currentOdometer - lastEntry.odometerReading!;
     if (distance > 0) {
-      final mileage = distance / liters;
+      // Fuel at last entry was consumed during this trip
+      final mileage = distance / lastEntry.liters;
       return {
         'currentOdometer': currentOdometer,
         'lastOdometer': lastEntry.odometerReading!,
         'distance': distance,
-        'liters': liters,
+        'liters': lastEntry.liters,
         'mileage': mileage,
         'lastFuelDate': lastEntry.dateTime,
       };

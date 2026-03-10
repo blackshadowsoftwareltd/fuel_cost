@@ -7,6 +7,7 @@ class FuelEntryCard extends StatelessWidget {
   final String currency;
   final VoidCallback onDelete;
   final VoidCallback? onEdit;
+  final VoidCallback? onChangeTime;
   final int index;
   final Animation<double> animation;
 
@@ -16,6 +17,7 @@ class FuelEntryCard extends StatelessWidget {
     required this.currency,
     required this.onDelete,
     this.onEdit,
+    this.onChangeTime,
     required this.index,
     required this.animation,
   });
@@ -323,6 +325,16 @@ class FuelEntryCard extends StatelessWidget {
           ),
         ),
         PopupMenuItem<String>(
+          value: 'changeTime',
+          child: Row(
+            children: [
+              Icon(Icons.schedule_rounded, color: Colors.orange, size: 20),
+              const SizedBox(width: 12),
+              const Text('Change Time', style: TextStyle(fontWeight: FontWeight.w500)),
+            ],
+          ),
+        ),
+        PopupMenuItem<String>(
           value: 'delete',
           child: Row(
             children: [
@@ -336,6 +348,8 @@ class FuelEntryCard extends StatelessWidget {
     ).then((value) {
       if (value == 'edit') {
         onEdit?.call();
+      } else if (value == 'changeTime') {
+        onChangeTime?.call();
       } else if (value == 'delete') {
         onDelete();
       }
@@ -370,6 +384,14 @@ class FuelEntryCard extends StatelessWidget {
                   onTap: () {
                     Navigator.pop(context);
                     onEdit?.call();
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.schedule_rounded, color: Colors.orange),
+                  title: const Text('Change Time', style: TextStyle(fontWeight: FontWeight.w500)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    onChangeTime?.call();
                   },
                 ),
                 ListTile(

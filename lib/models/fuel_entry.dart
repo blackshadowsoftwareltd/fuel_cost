@@ -65,6 +65,7 @@ class FuelEntry {
     final distance = current.odometerReading! - previous.odometerReading!;
     if (distance <= 0) return null;
 
-    return distance / current.liters;
+    // Fuel at previous entry was consumed during the trip from previous to current
+    return distance / previous.liters;
   }
 }

@@ -2,13 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'screens/home_screen.dart';
+import 'services/fuel_storage_service.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
+
+  // Force re-import CSV data (clear and reload)
+  await FuelStorageService.clearFuelEntries();
+  try {
+    final csvContent = await rootBundle.loadString('assets/fuel_entries_fixed.csv');
+    final count = await FuelStorageService.importFromCsv(csvContent);
+    debugPrint('Auto-imported $count fuel entries from CSV');
+  } catch (e) {
+    debugPrint('CSV auto-import skipped: $e');
+  }
+
   runApp(const ProviderScope(child: FuelCostApp()));
 }
 
