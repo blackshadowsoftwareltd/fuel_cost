@@ -11,14 +11,16 @@ void main() async {
     DeviceOrientation.portraitDown,
   ]);
 
-  // Force re-import CSV data (clear and reload)
-  await FuelStorageService.clearFuelEntries();
-  try {
-    final csvContent = await rootBundle.loadString('assets/fuel_entries_fixed.csv');
-    final count = await FuelStorageService.importFromCsv(csvContent);
-    debugPrint('Auto-imported $count fuel entries from CSV');
-  } catch (e) {
-    debugPrint('CSV auto-import skipped: $e');
+  // Auto-import CSV data only if DB is empty
+  final existingEntries = await FuelStorageService.getFuelEntries();
+  if (existingEntries.isEmpty) {
+    try {
+      final csvContent = await rootBundle.loadString('assets/fuel_entries_fixed.csv');
+      final count = await FuelStorageService.importFromCsv(csvContent);
+      debugPrint('Auto-imported $count fuel entries from CSV');
+    } catch (e) {
+      debugPrint('CSV auto-import skipped: $e');
+    }
   }
 
   runApp(const ProviderScope(child: FuelCostApp()));

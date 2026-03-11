@@ -5,11 +5,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:intl/intl.dart';
 import '../services/fuel_storage_service.dart';
 import '../services/auth_service.dart';
 import '../services/currency_service.dart';
+import '../services/drive_backup_service.dart';
 import '../widgets/widgets.dart';
-import 'auth_screen.dart';
+
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -23,12 +25,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isAuthenticated = false;
   String _selectedCurrency = '\$';
   String? _userEmail;
+  bool _isGoogleSignedIn = false;
+  String? _googleEmail;
+  DateTime? _lastBackupTime;
 
   @override
   void initState() {
     super.initState();
     _checkAuthStatus();
     _loadCurrency();
+    _checkGoogleDriveStatus();
   }
 
   Future<void> _checkAuthStatus() async {
@@ -352,6 +358,167 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _checkGoogleDriveStatus() async {
+    try {
+      final isSignedIn = await DriveBackupService.isSignedIn();
+      DateTime? lastBackup;
+      String? email;
+      if (isSignedIn) {
+        lastBackup = await DriveBackupService.getLastBackupTime();
+        email = DriveBackupService.currentUser?.email;
+      }
+      if (mounted) {
+        setState(() {
+          _isGoogleSignedIn = isSignedIn;
+          _lastBackupTime = lastBackup;
+          _googleEmail = email;
+        });
+      }
+    } catch (e) {
+      debugPrint('Google Drive status check failed: $e');
+    }
+  }
+
+  Future<void> _googleSignIn() async {
+    setState(() => _isLoading = true);
+    try {
+      final account = await DriveBackupService.signIn();
+      if (account != null && mounted) {
+        setState(() {
+          _isGoogleSignedIn = true;
+          _googleEmail = account.email;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(children: [
+              const Icon(Icons.check_circle, color: Colors.white),
+              const SizedBox(width: 12),
+              Expanded(child: Text('Signed in as ${account.email}')),
+            ]),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Google Sign-In failed: $e'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _googleSignOut() async {
+    setState(() => _isLoading = true);
+    try {
+      await DriveBackupService.signOut();
+      if (mounted) {
+        setState(() {
+          _isGoogleSignedIn = false;
+          _googleEmail = null;
+          _lastBackupTime = null;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(children: [
+              Icon(Icons.check_circle, color: Colors.white),
+              SizedBox(width: 12),
+              Text('Disconnected from Google Drive'),
+            ]),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _backupToDrive() async {
+    setState(() => _isLoading = true);
+    try {
+      await DriveBackupService.backupToDrive();
+      final now = DateTime.now();
+      if (mounted) {
+        setState(() => _lastBackupTime = now);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(children: [
+              Icon(Icons.cloud_done, color: Colors.white),
+              SizedBox(width: 12),
+              Text('Backup successful!'),
+            ]),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Backup failed: $e'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _restoreFromDrive() async {
+    setState(() => _isLoading = true);
+    try {
+      final count = await DriveBackupService.restoreFromDrive();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(children: [
+              const Icon(Icons.cloud_done, color: Colors.white),
+              const SizedBox(width: 12),
+              Text('Restored $count entries from backup'),
+            ]),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Restore failed: $e'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  String _formatBackupTime(DateTime time) {
+    return DateFormat('MMM dd, yyyy HH:mm').format(time);
+  }
+
   Future<void> _signOut() async {
     await AuthService.signOut();
     if (mounted) {
@@ -578,6 +745,77 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       isLast: true,
                                       isLoading: _isLoading,
                                     ),
+                                  ],
+                                ),
+
+                                // Google Drive Backup Section
+                                CupertinoSection(
+                                  title: 'Google Drive Backup',
+                                  children: [
+                                    CustomCupertinoListTile(
+                                      icon: _isGoogleSignedIn ? Icons.cloud_done : Icons.cloud_outlined,
+                                      title: _isGoogleSignedIn ? 'Connected' : 'Connect Google Drive',
+                                      subtitle: _isGoogleSignedIn
+                                          ? '${_googleEmail ?? ''}\nLast backup: ${_lastBackupTime != null ? _formatBackupTime(_lastBackupTime!) : "Never"}'
+                                          : 'Sign in to backup your data to Google Drive',
+                                      onTap: _isGoogleSignedIn ? () {} : _googleSignIn,
+                                      iconColor: _isGoogleSignedIn ? Colors.green : const Color(0xFF4285F4),
+                                      isFirst: true,
+                                      isLast: !_isGoogleSignedIn,
+                                      isLoading: _isLoading,
+                                      trailing: _isGoogleSignedIn
+                                          ? const Icon(CupertinoIcons.checkmark_circle_fill, color: Colors.green, size: 20)
+                                          : Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFF4285F4),
+                                                borderRadius: BorderRadius.circular(16),
+                                              ),
+                                              child: const Text(
+                                                'Sign In',
+                                                style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                                              ),
+                                            ),
+                                    ),
+                                    if (_isGoogleSignedIn) ...[
+                                      CustomCupertinoListTile(
+                                        icon: Icons.cloud_upload,
+                                        title: 'Backup Now',
+                                        subtitle: 'Upload your data to Google Drive',
+                                        onTap: _backupToDrive,
+                                        iconColor: const Color(0xFF4CAF50),
+                                        isLoading: _isLoading,
+                                      ),
+                                      CustomCupertinoListTile(
+                                        icon: Icons.cloud_download,
+                                        title: 'Restore from Backup',
+                                        subtitle: 'Download and restore your data',
+                                        onTap: () => _showConfirmationDialog(
+                                          title: 'Restore from Google Drive',
+                                          message: 'This will replace all current data with the backup from Google Drive. This cannot be undone.',
+                                          confirmText: 'Restore',
+                                          confirmColor: Colors.orange,
+                                          onConfirm: _restoreFromDrive,
+                                        ),
+                                        iconColor: const Color(0xFF2196F3),
+                                        isLoading: _isLoading,
+                                      ),
+                                      CustomCupertinoListTile(
+                                        icon: Icons.link_off,
+                                        title: 'Disconnect Google Drive',
+                                        subtitle: 'Sign out from Google backup',
+                                        onTap: () => _showConfirmationDialog(
+                                          title: 'Disconnect',
+                                          message: 'Your existing backups will remain on Google Drive but no new backups will be made.',
+                                          confirmText: 'Disconnect',
+                                          confirmColor: Colors.red,
+                                          onConfirm: _googleSignOut,
+                                        ),
+                                        iconColor: Colors.red,
+                                        isLast: true,
+                                        isLoading: _isLoading,
+                                      ),
+                                    ],
                                   ],
                                 ),
 
