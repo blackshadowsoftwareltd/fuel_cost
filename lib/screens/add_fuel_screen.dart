@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/fuel_entry.dart';
+import '../models/vehicle.dart';
 import '../services/fuel_storage_service.dart';
-// import '../services/auth_service.dart';
-// import '../services/sync_service.dart';
 import '../services/currency_service.dart';
+import '../services/vehicle_service.dart';
 import '../widgets/widgets.dart';
 
 class AddFuelScreen extends StatefulWidget {
@@ -28,6 +28,9 @@ class _AddFuelScreenState extends State<AddFuelScreen> with TickerProviderStateM
   double? _estimatedMileage;
   Map<String, dynamic>? _calculationDetails;
   String _currency = '\$';
+  List<Vehicle> _vehicles = [];
+  String? _selectedVehicleId;
+  String? _vehicleError;
 
   late AnimationController _fadeAnimationController;
   late AnimationController _slideAnimationController;
@@ -69,10 +72,8 @@ class _AddFuelScreenState extends State<AddFuelScreen> with TickerProviderStateM
       end: 1.0,
     ).animate(CurvedAnimation(parent: _staggeredAnimationController, curve: Curves.easeOutCubic));
 
-    if (!widget.isEditing) {
-      _loadCurrentOdometer();
-    }
     _loadCurrency();
+    _loadVehicles();
     _litersController.addListener(_calculateMileage);
     _odometerController.addListener(_calculateMileage);
 
@@ -93,14 +94,16 @@ class _AddFuelScreenState extends State<AddFuelScreen> with TickerProviderStateM
     _staggeredAnimationController.forward();
   }
 
-  Future<void> _loadCurrentOdometer() async {
-    final odometer = await FuelStorageService.getCurrentOdometer();
-    setState(() {
-      _currentOdometer = odometer;
-      if (odometer != null) {
-        _odometerController.text = odometer.toString();
-      }
-    });
+  Future<void> _loadOdometerForVehicle(String? vehicleId) async {
+    final odometer = await FuelStorageService.getLastOdometerForVehicle(vehicleId);
+    if (mounted) {
+      setState(() {
+        _currentOdometer = odometer;
+        if (!widget.isEditing) {
+          _odometerController.text = odometer?.toString() ?? '';
+        }
+      });
+    }
   }
 
   Future<void> _loadCurrency() async {
@@ -109,6 +112,27 @@ class _AddFuelScreenState extends State<AddFuelScreen> with TickerProviderStateM
       setState(() {
         _currency = currency;
       });
+    }
+  }
+
+  Future<void> _loadVehicles() async {
+    final vehicles = await VehicleService.getVehicles();
+    String? selectedId;
+    if (widget.isEditing) {
+      selectedId = await VehicleService.getVehicleIdForEntry(widget.existingEntry!.id);
+    } else {
+      selectedId = await VehicleService.getSelectedVehicleId();
+      // Default to last vehicle if none selected
+      if (selectedId == null && vehicles.isNotEmpty) {
+        selectedId = vehicles.last.id;
+      }
+    }
+    if (mounted) {
+      setState(() {
+        _vehicles = vehicles;
+        _selectedVehicleId = selectedId;
+      });
+      _loadOdometerForVehicle(selectedId);
     }
   }
 
@@ -131,6 +155,19 @@ class _AddFuelScreenState extends State<AddFuelScreen> with TickerProviderStateM
         _calculationDetails = null;
       });
     }
+  }
+
+  static const Map<String, IconData> _vehicleIcons = {
+    'directions_car': Icons.directions_car,
+    'two_wheeler': Icons.two_wheeler,
+    'local_shipping': Icons.local_shipping,
+    'airport_shuttle': Icons.airport_shuttle,
+    'electric_car': Icons.electric_car,
+    'pedal_bike': Icons.pedal_bike,
+  };
+
+  IconData _vehicleSegmentIcon(String iconName) {
+    return _vehicleIcons[iconName] ?? Icons.directions_car;
   }
 
   String _formatDate(DateTime date) {
@@ -163,8 +200,14 @@ class _AddFuelScreenState extends State<AddFuelScreen> with TickerProviderStateM
   Future<void> _saveFuelEntry() async {
     if (!_formKey.currentState!.validate()) return;
 
+    if (_selectedVehicleId == null) {
+      setState(() => _vehicleError = 'Please select a vehicle');
+      return;
+    }
+
     setState(() {
       _isLoading = true;
+      _vehicleError = null;
     });
 
     try {
@@ -180,9 +223,17 @@ class _AddFuelScreenState extends State<AddFuelScreen> with TickerProviderStateM
           ..odometerReading = odometerReading;
 
         await FuelStorageService.updateFuelEntry(entry);
+        // Update vehicle assignment
+        if (_selectedVehicleId != null) {
+          await VehicleService.assignVehicleToEntry(entry.id, _selectedVehicleId!);
+        }
       } else {
         final entry = FuelEntry.create(liters: liters, pricePerLiter: pricePerLiter, odometerReading: odometerReading);
         await FuelStorageService.saveFuelEntry(entry);
+        // Assign vehicle to entry
+        if (_selectedVehicleId != null) {
+          await VehicleService.assignVehicleToEntry(entry.id, _selectedVehicleId!);
+        }
       }
 
       if (mounted) {
@@ -282,6 +333,123 @@ class _AddFuelScreenState extends State<AddFuelScreen> with TickerProviderStateM
                     ),
 
                     const SizedBox(height: 25),
+
+                    // Vehicle Selector (segmented buttons)
+                    FadeTransition(
+                      opacity: _fadeAnimation,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (_vehicles.isEmpty)
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: Colors.redAccent, width: 1.5),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.warning_amber_rounded, color: Colors.orangeAccent, size: 20),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      'No vehicles added. Add one in Settings > Vehicles.',
+                                      style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 13),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          else
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 4),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: _vehicleError != null
+                                      ? Colors.redAccent
+                                      : Colors.transparent,
+                                  width: _vehicleError != null ? 2 : 0,
+                                ),
+                              ),
+                              child: SizedBox(
+                                width: double.infinity,
+                                child: SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: Row(
+                                    children: _vehicles.map((v) {
+                                      final isSelected = _selectedVehicleId == v.id;
+                                      final iconData = _vehicleSegmentIcon(v.iconName);
+                                      return Padding(
+                                        padding: const EdgeInsets.only(right: 8),
+                                        child: GestureDetector(
+                                          onTap: () {
+                                            setState(() {
+                                              _selectedVehicleId = v.id;
+                                              _vehicleError = null;
+                                            });
+                                            _loadOdometerForVehicle(v.id);
+                                          },
+                                          child: AnimatedContainer(
+                                            duration: const Duration(milliseconds: 200),
+                                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                            decoration: BoxDecoration(
+                                              color: isSelected
+                                                  ? Colors.white
+                                                  : Colors.white.withValues(alpha: 0.12),
+                                              borderRadius: BorderRadius.circular(14),
+                                              border: Border.all(
+                                                color: isSelected
+                                                    ? Colors.white
+                                                    : Colors.white.withValues(alpha: 0.25),
+                                                width: 1.5,
+                                              ),
+                                              boxShadow: isSelected
+                                                  ? [BoxShadow(color: Colors.white.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 2))]
+                                                  : null,
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  iconData,
+                                                  size: 20,
+                                                  color: isSelected ? const Color(0xFF667eea) : Colors.white.withValues(alpha: 0.8),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Text(
+                                                  v.name,
+                                                  style: TextStyle(
+                                                    fontSize: 14,
+                                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                                    color: isSelected ? const Color(0xFF667eea) : Colors.white.withValues(alpha: 0.9),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          if (_vehicleError != null)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 8, bottom: 8, top: 4),
+                              child: Text(
+                                _vehicleError!,
+                                style: const TextStyle(color: Colors.redAccent, fontSize: 12, fontWeight: FontWeight.w500),
+                              ),
+                            ),
+                          if (_vehicleError == null)
+                            const SizedBox(height: 12),
+                        ],
+                      ),
+                    ),
 
                     // Form Fields with scale animation
                     ScaleTransition(

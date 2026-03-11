@@ -277,7 +277,7 @@ class _TripCalculatorScreenState extends ConsumerState<TripCalculatorScreen>
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(label, style: TextStyle(fontSize: 14, color: isDark ? Colors.grey.shade300 : Colors.grey.shade700)),
-        Switch.adaptive(value: value, onChanged: onChanged, activeColor: const Color(0xFF667eea)),
+        Switch.adaptive(value: value, onChanged: onChanged, activeTrackColor: const Color(0xFF667eea)),
       ],
     );
   }

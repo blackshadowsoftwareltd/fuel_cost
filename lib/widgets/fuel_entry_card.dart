@@ -10,6 +10,8 @@ class FuelEntryCard extends StatelessWidget {
   final VoidCallback? onChangeTime;
   final int index;
   final Animation<double> animation;
+  final IconData? vehicleIcon;
+  final String? vehicleName;
 
   const FuelEntryCard({
     super.key,
@@ -20,6 +22,8 @@ class FuelEntryCard extends StatelessWidget {
     this.onChangeTime,
     required this.index,
     required this.animation,
+    this.vehicleIcon,
+    this.vehicleName,
   });
 
   List<Widget> _buildWideLayout(
@@ -28,17 +32,30 @@ class FuelEntryCard extends StatelessWidget {
     DateFormat dateFormatter,
     DateFormat timeFormatter,
   ) {
+    final icon = vehicleIcon ?? Icons.local_gas_station_rounded;
     return [
       Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.blue.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.local_gas_station_rounded, color: Colors.blue, size: 24),
+          Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: Colors.blue, size: 24),
+              ),
+              if (vehicleName != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  vehicleName!,
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: colorScheme.onSurface.withValues(alpha: 0.5)),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ],
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -136,26 +153,47 @@ class FuelEntryCard extends StatelessWidget {
     DateFormat dateFormatter,
     DateFormat timeFormatter,
   ) {
+    final icon = vehicleIcon ?? Icons.local_gas_station_rounded;
     return [
       Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
+          Expanded(
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, color: Colors.blue, size: 20),
                 ),
-                child: const Icon(Icons.local_gas_station_rounded, color: Colors.blue, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                '${entry.liters.toStringAsFixed(2)}L',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: colorScheme.onSurface),
-              ),
-            ],
+                const SizedBox(width: 12),
+                if (vehicleName != null) ...[
+                  Flexible(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${entry.liters.toStringAsFixed(2)}L',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: colorScheme.onSurface),
+                        ),
+                        Text(
+                          vehicleName!,
+                          style: TextStyle(fontSize: 11, color: colorScheme.onSurface.withValues(alpha: 0.5)),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ] else
+                  Text(
+                    '${entry.liters.toStringAsFixed(2)}L',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: colorScheme.onSurface),
+                  ),
+              ],
+            ),
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),

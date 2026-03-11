@@ -102,7 +102,7 @@ class ThemeService {
       dialogTheme: DialogThemeData(
         elevation: 8,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        titleTextStyle: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+        titleTextStyle: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: Colors.black87),
       ),
       snackBarTheme: SnackBarThemeData(
         elevation: 6,

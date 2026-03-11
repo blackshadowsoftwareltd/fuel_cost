@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:extension_google_sign_in_as_googleapis_auth/extension_google_sign_in_as_googleapis_auth.dart';
@@ -15,11 +17,39 @@ class DriveBackupService {
     scopes: [drive.DriveApi.driveAppdataScope],
   );
 
+  /// Check if Google Sign-In is properly configured on this platform
+  static Future<bool> _isConfigured() async {
+    if (Platform.isIOS) {
+      // Check if GIDClientID is set in Info.plist
+      try {
+        final plistData = await rootBundle.loadStructuredData<Map<String, dynamic>>(
+          'ios/GoogleService-Info.plist',
+          (value) async => <String, dynamic>{},
+        );
+        return plistData.isNotEmpty;
+      } catch (_) {
+        // Can't read plist from Dart; check by attempting sign-in silently
+        // The real check is done at native level
+        return true; // Let it proceed and catch errors
+      }
+    }
+    return true;
+  }
+
   // --- Sign-In ---
 
   static Future<GoogleSignInAccount?> signIn() async {
     try {
       return await _googleSignIn.signIn();
+    } on PlatformException catch (e) {
+      if (e.message?.contains('GIDClientID') == true ||
+          e.code == 'sign_in_failed') {
+        throw Exception(
+          'Google Sign-In not configured. '
+          'Please set GIDClientID in Info.plist (iOS) or configure google-services.json (Android).',
+        );
+      }
+      rethrow;
     } catch (e) {
       debugPrint('Google Sign-In error: $e');
       rethrow;
@@ -34,8 +64,13 @@ class DriveBackupService {
   }
 
   static Future<bool> isSignedIn() async {
-    return _googleSignIn.currentUser != null ||
-        await _googleSignIn.signInSilently() != null;
+    try {
+      return _googleSignIn.currentUser != null ||
+          await _googleSignIn.signInSilently() != null;
+    } catch (e) {
+      debugPrint('Google Sign-In check failed: $e');
+      return false;
+    }
   }
 
   static GoogleSignInAccount? get currentUser => _googleSignIn.currentUser;

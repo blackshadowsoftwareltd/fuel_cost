@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:file_picker/file_picker.dart';
@@ -10,17 +11,20 @@ import '../services/fuel_storage_service.dart';
 import '../services/auth_service.dart';
 import '../services/currency_service.dart';
 import '../services/drive_backup_service.dart';
+import '../services/budget_service.dart';
+import '../services/theme_service.dart';
+import '../providers/theme_provider.dart';
 import '../widgets/widgets.dart';
 
 
-class SettingsScreen extends StatefulWidget {
+class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
   @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _isLoading = false;
   bool _isAuthenticated = false;
   String _selectedCurrency = '\$';
@@ -28,6 +32,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isGoogleSignedIn = false;
   String? _googleEmail;
   DateTime? _lastBackupTime;
+  double? _monthlyBudget;
 
   @override
   void initState() {
@@ -35,6 +40,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _checkAuthStatus();
     _loadCurrency();
     _checkGoogleDriveStatus();
+    _loadBudget();
   }
 
   Future<void> _checkAuthStatus() async {
@@ -42,7 +48,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     String? email;
     if (isAuth) {
       email = await AuthService.getUserEmail();
-      debugPrint('Debug: Auth status: $isAuth, Email: $email'); // Debug line
     }
     if (mounted) {
       setState(() {
@@ -54,11 +59,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _loadCurrency() async {
     final currency = await CurrencyService.getSelectedCurrency();
-    if (mounted) {
-      setState(() {
-        _selectedCurrency = currency;
-      });
-    }
+    if (mounted) setState(() => _selectedCurrency = currency);
+  }
+
+  Future<void> _loadBudget() async {
+    final budget = await BudgetService.getMonthlyBudget();
+    if (mounted) setState(() => _monthlyBudget = budget);
   }
 
   Future<void> _showCurrencyDialog() async {
@@ -73,13 +79,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Row(
-                    children: [
-                      const Icon(Icons.check_circle, color: Colors.white),
-                      const SizedBox(width: 12),
-                      Text('Currency changed to $currency (${CurrencyService.getCurrencyName(currency)})'),
-                    ],
-                  ),
+                  content: Row(children: [
+                    const Icon(Icons.check_circle, color: Colors.white),
+                    const SizedBox(width: 12),
+                    Text('Currency changed to $currency (${CurrencyService.getCurrencyName(currency)})'),
+                  ]),
                   backgroundColor: Colors.green,
                   behavior: SnackBarBehavior.floating,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -90,6 +94,50 @@ class _SettingsScreenState extends State<SettingsScreen> {
         );
       },
     );
+  }
+
+  Future<void> _showBudgetDialog() async {
+    final controller = TextEditingController(text: _monthlyBudget?.toStringAsFixed(0) ?? '');
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final result = await showDialog<double?>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Set Monthly Budget'),
+        content: TextField(
+          controller: controller,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^[0-9]*\.?[0-9]*'))],
+          decoration: InputDecoration(
+            labelText: 'Budget ($_selectedCurrency)',
+            prefixIcon: const Icon(Icons.account_balance_wallet),
+            hintText: 'e.g. 5000',
+          ),
+          style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+        ),
+        actions: [
+          if (_monthlyBudget != null)
+            TextButton(
+              onPressed: () => Navigator.pop(context, -1.0),
+              child: const Text('Remove', style: TextStyle(color: Colors.red)),
+            ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, double.tryParse(controller.text)),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null) {
+      if (result == -1.0) {
+        await BudgetService.setMonthlyBudget(null);
+        setState(() => _monthlyBudget = null);
+      } else if (result > 0) {
+        await BudgetService.setMonthlyBudget(result);
+        setState(() => _monthlyBudget = result);
+      }
+    }
   }
 
   Future<void> _showConfirmationDialog({
@@ -120,30 +168,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await FuelStorageService.clearAllData();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 12),
-                Text('All fuel data cleared successfully'),
-              ],
-            ),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
+          SnackBar(content: const Row(children: [Icon(Icons.check_circle, color: Colors.white), SizedBox(width: 12), Text('All fuel data cleared successfully')]),
+            backgroundColor: Colors.green, behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error clearing data: $e'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error clearing data: $e'), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -156,30 +187,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await FuelStorageService.clearFuelEntries();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 12),
-                Text('Fuel entries cleared successfully'),
-              ],
-            ),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
+          SnackBar(content: const Row(children: [Icon(Icons.check_circle, color: Colors.white), SizedBox(width: 12), Text('Fuel entries cleared successfully')]),
+            backgroundColor: Colors.green, behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error clearing fuel entries: $e'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -192,30 +206,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await FuelStorageService.clearCurrentOdometer();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 12),
-                Text('Odometer data cleared successfully'),
-              ],
-            ),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
+          SnackBar(content: const Row(children: [Icon(Icons.check_circle, color: Colors.white), SizedBox(width: 12), Text('Odometer data cleared successfully')]),
+            backgroundColor: Colors.green, behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error clearing odometer data: $e'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -228,30 +225,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await FuelStorageService.clearAllSharedPreferences();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 12),
-                Text('All cache and preferences cleared'),
-              ],
-            ),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
+          SnackBar(content: const Row(children: [Icon(Icons.check_circle, color: Colors.white), SizedBox(width: 12), Text('All cache and preferences cleared')]),
+            backgroundColor: Colors.green, behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error clearing cache: $e'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -265,44 +245,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final dir = await getTemporaryDirectory();
       final file = File('${dir.path}/fuel_entries.csv');
       await file.writeAsString(csvContent);
-
       final box = context.findRenderObject() as RenderBox?;
-      await Share.shareXFiles(
-        [XFile(file.path)],
-        text: 'Fuel Cost Export',
-        sharePositionOrigin: box != null
-            ? box.localToGlobal(Offset.zero) & box.size
-            : const Rect.fromLTWH(0, 0, 100, 100),
-      );
-
+      await Share.shareXFiles([XFile(file.path)], text: 'Fuel Cost Export',
+        sharePositionOrigin: box != null ? box.localToGlobal(Offset.zero) & box.size : const Rect.fromLTWH(0, 0, 100, 100));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 12),
-                Text('CSV exported successfully'),
-              ],
-            ),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
+          SnackBar(content: const Row(children: [Icon(Icons.check_circle, color: Colors.white), SizedBox(width: 12), Text('CSV exported successfully')]),
+            backgroundColor: Colors.green, behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
         );
       }
     } catch (e, stackTrace) {
-      debugPrint('Export CSV error: $e');
-      debugPrint('Stack trace: $stackTrace');
+      debugPrint('Export CSV error: $e\n$stackTrace');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error exporting CSV: $e'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error exporting CSV: $e'), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -312,46 +267,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _importCsv() async {
     setState(() => _isLoading = true);
     try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['csv'],
-      );
-
+      final result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['csv']);
       if (result == null || result.files.single.path == null) {
         setState(() => _isLoading = false);
         return;
       }
-
       final file = File(result.files.single.path!);
       final csvContent = await file.readAsString();
       final imported = await FuelStorageService.importFromCsv(csvContent);
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle, color: Colors.white),
-                const SizedBox(width: 12),
-                Text('$imported entries imported successfully'),
-              ],
-            ),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
+          SnackBar(content: Row(children: [const Icon(Icons.check_circle, color: Colors.white), const SizedBox(width: 12), Text('$imported entries imported successfully')]),
+            backgroundColor: Colors.green, behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error importing CSV: $e'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error importing CSV: $e'), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -367,13 +299,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         lastBackup = await DriveBackupService.getLastBackupTime();
         email = DriveBackupService.currentUser?.email;
       }
-      if (mounted) {
-        setState(() {
-          _isGoogleSignedIn = isSignedIn;
-          _lastBackupTime = lastBackup;
-          _googleEmail = email;
-        });
-      }
+      if (mounted) setState(() { _isGoogleSignedIn = isSignedIn; _lastBackupTime = lastBackup; _googleEmail = email; });
     } catch (e) {
       debugPrint('Google Drive status check failed: $e');
     }
@@ -384,34 +310,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     try {
       final account = await DriveBackupService.signIn();
       if (account != null && mounted) {
-        setState(() {
-          _isGoogleSignedIn = true;
-          _googleEmail = account.email;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(children: [
-              const Icon(Icons.check_circle, color: Colors.white),
-              const SizedBox(width: 12),
-              Expanded(child: Text('Signed in as ${account.email}')),
-            ]),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-        );
+        setState(() { _isGoogleSignedIn = true; _googleEmail = account.email; });
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Row(children: [const Icon(Icons.check_circle, color: Colors.white), const SizedBox(width: 12), Expanded(child: Text('Signed in as ${account.email}'))]),
+          backgroundColor: Colors.green, behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))));
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Google Sign-In failed: $e'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-        );
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Google Sign-In failed: $e'), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -422,23 +327,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     try {
       await DriveBackupService.signOut();
       if (mounted) {
-        setState(() {
-          _isGoogleSignedIn = false;
-          _googleEmail = null;
-          _lastBackupTime = null;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Row(children: [
-              Icon(Icons.check_circle, color: Colors.white),
-              SizedBox(width: 12),
-              Text('Disconnected from Google Drive'),
-            ]),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-        );
+        setState(() { _isGoogleSignedIn = false; _googleEmail = null; _lastBackupTime = null; });
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: const Row(children: [Icon(Icons.check_circle, color: Colors.white), SizedBox(width: 12), Text('Disconnected from Google Drive')]),
+          backgroundColor: Colors.green, behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -452,30 +344,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final now = DateTime.now();
       if (mounted) {
         setState(() => _lastBackupTime = now);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Row(children: [
-              Icon(Icons.cloud_done, color: Colors.white),
-              SizedBox(width: 12),
-              Text('Backup successful!'),
-            ]),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: const Row(children: [Icon(Icons.cloud_done, color: Colors.white), SizedBox(width: 12), Text('Backup successful!')]),
+          backgroundColor: Colors.green, behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))));
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Backup failed: $e'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-        );
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Backup failed: $e'), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -486,71 +360,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
     try {
       final count = await DriveBackupService.restoreFromDrive();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(children: [
-              const Icon(Icons.cloud_done, color: Colors.white),
-              const SizedBox(width: 12),
-              Text('Restored $count entries from backup'),
-            ]),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Row(children: [const Icon(Icons.cloud_done, color: Colors.white), const SizedBox(width: 12), Text('Restored $count entries from backup')]),
+          backgroundColor: Colors.green, behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))));
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Restore failed: $e'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-        );
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Restore failed: $e'), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  String _formatBackupTime(DateTime time) {
-    return DateFormat('MMM dd, yyyy HH:mm').format(time);
-  }
+  String _formatBackupTime(DateTime time) => DateFormat('MMM dd, yyyy HH:mm').format(time);
 
   Future<void> _signOut() async {
     await AuthService.signOut();
     if (mounted) {
-      setState(() {
-        _isAuthenticated = false;
-        _userEmail = null;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Row(
-            children: [
-              Icon(Icons.check_circle, color: Colors.white),
-              SizedBox(width: 12),
-              Text('Signed out successfully'),
-            ],
-          ),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
-      );
+      setState(() { _isAuthenticated = false; _userEmail = null; });
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: const Row(children: [Icon(Icons.check_circle, color: Colors.white), SizedBox(width: 12), Text('Signed out successfully')]),
+        backgroundColor: Colors.green, behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))));
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final themeState = ref.watch(themeProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFF667eea), Color(0xFF764ba2), Color(0xFF2196F3)],
+            colors: isDark
+                ? [const Color(0xFF1a1a2e), const Color(0xFF16213e), const Color(0xFF0f3460)]
+                : [const Color(0xFF667eea), const Color(0xFF764ba2), const Color(0xFF2196F3)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -558,44 +403,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: SafeArea(
           child: Column(
             children: [
-              // Custom AppBar with gradient background
+              // Custom AppBar
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 child: Row(
                   children: [
                     Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: IconButton(
-                        icon: const Icon(Icons.arrow_back, color: Colors.white),
-                        onPressed: () => Navigator.pop(context),
-                      ),
+                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(12)),
+                      child: IconButton(icon: const Icon(Icons.arrow_back, color: Colors.white), onPressed: () => Navigator.pop(context)),
                     ),
                     const SizedBox(width: 16),
-                    const Expanded(
-                      child: Text(
-                        'Settings',
-                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
-                      ),
-                    ),
+                    const Expanded(child: Text('Settings', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white))),
                     if (_isAuthenticated)
                       Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(12)),
                         child: IconButton(
                           icon: const Icon(Icons.logout, color: Colors.white),
-                          onPressed: () => _showConfirmationDialog(
-                            title: 'Sign Out',
-                            message:
-                                'Are you sure you want to sign out? You can sign in again later to sync your data.',
-                            confirmText: 'Sign Out',
-                            confirmColor: Colors.orange,
-                            onConfirm: _signOut,
-                          ),
+                          onPressed: () => _showConfirmationDialog(title: 'Sign Out', message: 'Are you sure you want to sign out?', confirmText: 'Sign Out', confirmColor: Colors.orange, onConfirm: _signOut),
                           tooltip: 'Sign Out',
                         ),
                       ),
@@ -609,25 +433,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   margin: const EdgeInsets.all(16.0),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [Colors.white.withValues(alpha: 0.98), Colors.white.withValues(alpha: 0.92)],
+                      colors: isDark
+                          ? [const Color(0xFF1E1E1E).withValues(alpha: 0.98), const Color(0xFF1E1E1E).withValues(alpha: 0.92)]
+                          : [Colors.white.withValues(alpha: 0.98), Colors.white.withValues(alpha: 0.92)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                     borderRadius: BorderRadius.circular(28),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 1.5),
+                    border: Border.all(color: isDark ? Colors.grey.shade800 : Colors.white.withValues(alpha: 0.4), width: 1.5),
                     boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.08),
-                        blurRadius: 25,
-                        offset: const Offset(0, 15),
-                        spreadRadius: -5,
-                      ),
-                      BoxShadow(
-                        color: const Color(0xFF2196F3).withValues(alpha: 0.05),
-                        blurRadius: 40,
-                        offset: const Offset(0, 25),
-                        spreadRadius: -15,
-                      ),
+                      BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 25, offset: const Offset(0, 15), spreadRadius: -5),
                     ],
                   ),
                   child: Padding(
@@ -635,15 +450,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Settings',
-                          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87),
-                        ),
+                        Text('Settings', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
                         const SizedBox(height: 8),
-                        Text(
-                          'Manage your account, preferences and data',
-                          style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
-                        ),
+                        Text('Manage your account, preferences and data', style: TextStyle(fontSize: 16, color: isDark ? Colors.grey.shade400 : Colors.grey.shade600)),
                         const SizedBox(height: 24),
 
                         Expanded(
@@ -657,62 +466,67 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       title: 'Account',
                                       children: [
                                         CustomCupertinoListTile(
-                                          icon: _isAuthenticated
-                                              ? CupertinoIcons.checkmark_shield
-                                              : CupertinoIcons.person_circle,
+                                          icon: _isAuthenticated ? CupertinoIcons.checkmark_shield : CupertinoIcons.person_circle,
                                           title: _isAuthenticated ? 'Signed In' : 'Not Signed In',
                                           subtitle: _isAuthenticated
-                                              ? (_userEmail != null && _userEmail!.isNotEmpty)
-                                                    ? '$_userEmail\nYour data is being synced to the cloud'
-                                                    : 'Your data is being synced to the cloud'
+                                              ? (_userEmail != null && _userEmail!.isNotEmpty ? '$_userEmail\nYour data is being synced' : 'Your data is being synced')
                                               : 'Sign in to sync your data across devices',
-                                          onTap: !_isAuthenticated
-                                              ? () async => await AuthService.handleSync(context, state)
-                                              : () {},
+                                          onTap: !_isAuthenticated ? () async => await AuthService.handleSync(context, state) : () {},
                                           iconColor: _isAuthenticated ? Colors.green : Colors.orange,
-                                          isFirst: true,
-                                          isLast: true,
-                                          isLoading: _isLoading,
+                                          isFirst: true, isLast: true, isLoading: _isLoading,
                                           trailing: !_isAuthenticated
-                                              ? Container(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                                  decoration: BoxDecoration(
-                                                    color: const Color(0xFF2196F3),
-                                                    borderRadius: BorderRadius.circular(16),
-                                                  ),
-                                                  child: const Text(
-                                                    'Sign In',
-                                                    style: TextStyle(
-                                                      color: Colors.white,
-                                                      fontSize: 12,
-                                                      fontWeight: FontWeight.w600,
-                                                    ),
-                                                  ),
-                                                )
-                                              : Icon(
-                                                  CupertinoIcons.checkmark_circle_fill,
-                                                  color: Colors.green,
-                                                  size: 20,
-                                                ),
+                                              ? Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), decoration: BoxDecoration(color: const Color(0xFF2196F3), borderRadius: BorderRadius.circular(16)),
+                                                  child: const Text('Sign In', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)))
+                                              : const Icon(CupertinoIcons.checkmark_circle_fill, color: Colors.green, size: 20),
                                         ),
                                       ],
                                     );
                                   },
                                 ),
-                                // Currency Selection Section
+
+                                // Appearance Section
+                                CupertinoSection(
+                                  title: 'Appearance',
+                                  children: [
+                                    CustomCupertinoListTile(
+                                      icon: _getThemeIcon(themeState.themeMode),
+                                      title: 'Theme',
+                                      subtitle: 'Current: ${_getThemeLabel(themeState.themeMode)}',
+                                      onTap: () => _showThemeDialog(),
+                                      iconColor: const Color(0xFF9C27B0),
+                                      isFirst: true, isLoading: false,
+                                    ),
+                                    CustomCupertinoListTile(
+                                      icon: Icons.palette_outlined,
+                                      title: 'Accent Color',
+                                      subtitle: 'Customize app color',
+                                      onTap: () => _showAccentColorDialog(),
+                                      iconColor: themeState.accentColor,
+                                      isLast: true, isLoading: false,
+                                      trailing: Container(width: 24, height: 24, decoration: BoxDecoration(color: themeState.accentColor, shape: BoxShape.circle, border: Border.all(color: Colors.grey.shade300, width: 1))),
+                                    ),
+                                  ],
+                                ),
+
+                                // Preferences Section
                                 CupertinoSection(
                                   title: 'Preferences',
                                   children: [
                                     CustomCupertinoListTile(
                                       icon: Icons.currency_exchange,
                                       title: 'Currency',
-                                      subtitle:
-                                          'Current: $_selectedCurrency (${CurrencyService.getCurrencyName(_selectedCurrency)})',
+                                      subtitle: 'Current: $_selectedCurrency (${CurrencyService.getCurrencyName(_selectedCurrency)})',
                                       onTap: _showCurrencyDialog,
                                       iconColor: const Color(0xFF2196F3),
-                                      isFirst: true,
-                                      isLast: true,
-                                      isLoading: _isLoading,
+                                      isFirst: true, isLoading: _isLoading,
+                                    ),
+                                    CustomCupertinoListTile(
+                                      icon: Icons.account_balance_wallet,
+                                      title: 'Monthly Budget',
+                                      subtitle: _monthlyBudget != null ? '$_selectedCurrency${_monthlyBudget!.toStringAsFixed(0)} per month' : 'Not set',
+                                      onTap: _showBudgetDialog,
+                                      iconColor: const Color(0xFFFF9800),
+                                      isLast: true, isLoading: false,
                                     ),
                                   ],
                                 ),
@@ -722,29 +536,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   title: 'Export & Import',
                                   children: [
                                     CustomCupertinoListTile(
-                                      icon: Icons.file_upload_outlined,
-                                      title: 'Export to CSV',
-                                      subtitle: 'Export all fuel entries as a CSV file',
-                                      onTap: _exportCsv,
-                                      iconColor: const Color(0xFF4CAF50),
-                                      isFirst: true,
-                                      isLoading: _isLoading,
-                                    ),
+                                      icon: Icons.file_upload_outlined, title: 'Export to CSV', subtitle: 'Export all fuel entries as a CSV file',
+                                      onTap: _exportCsv, iconColor: const Color(0xFF4CAF50), isFirst: true, isLoading: _isLoading),
                                     CustomCupertinoListTile(
-                                      icon: Icons.file_download_outlined,
-                                      title: 'Import from CSV',
-                                      subtitle: 'Import fuel entries from a CSV file',
-                                      onTap: () => _showConfirmationDialog(
-                                        title: 'Import CSV',
-                                        message: 'Importing will add entries from the CSV file. Existing entries with the same ID will be updated.',
-                                        confirmText: 'Import',
-                                        confirmColor: const Color(0xFF2196F3),
-                                        onConfirm: _importCsv,
-                                      ),
-                                      iconColor: const Color(0xFF2196F3),
-                                      isLast: true,
-                                      isLoading: _isLoading,
-                                    ),
+                                      icon: Icons.file_download_outlined, title: 'Import from CSV', subtitle: 'Import fuel entries from a CSV file',
+                                      onTap: () => _showConfirmationDialog(title: 'Import CSV', message: 'Importing will add entries from the CSV file. Existing entries with the same ID will be updated.',
+                                        confirmText: 'Import', confirmColor: const Color(0xFF2196F3), onConfirm: _importCsv),
+                                      iconColor: const Color(0xFF2196F3), isLast: true, isLoading: _isLoading),
                                   ],
                                 ),
 
@@ -760,61 +558,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                           : 'Sign in to backup your data to Google Drive',
                                       onTap: _isGoogleSignedIn ? () {} : _googleSignIn,
                                       iconColor: _isGoogleSignedIn ? Colors.green : const Color(0xFF4285F4),
-                                      isFirst: true,
-                                      isLast: !_isGoogleSignedIn,
-                                      isLoading: _isLoading,
+                                      isFirst: true, isLast: !_isGoogleSignedIn, isLoading: _isLoading,
                                       trailing: _isGoogleSignedIn
                                           ? const Icon(CupertinoIcons.checkmark_circle_fill, color: Colors.green, size: 20)
-                                          : Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                              decoration: BoxDecoration(
-                                                color: const Color(0xFF4285F4),
-                                                borderRadius: BorderRadius.circular(16),
-                                              ),
-                                              child: const Text(
-                                                'Sign In',
-                                                style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
-                                              ),
-                                            ),
+                                          : Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                              decoration: BoxDecoration(color: const Color(0xFF4285F4), borderRadius: BorderRadius.circular(16)),
+                                              child: const Text('Sign In', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600))),
                                     ),
                                     if (_isGoogleSignedIn) ...[
-                                      CustomCupertinoListTile(
-                                        icon: Icons.cloud_upload,
-                                        title: 'Backup Now',
-                                        subtitle: 'Upload your data to Google Drive',
-                                        onTap: _backupToDrive,
-                                        iconColor: const Color(0xFF4CAF50),
-                                        isLoading: _isLoading,
-                                      ),
-                                      CustomCupertinoListTile(
-                                        icon: Icons.cloud_download,
-                                        title: 'Restore from Backup',
-                                        subtitle: 'Download and restore your data',
-                                        onTap: () => _showConfirmationDialog(
-                                          title: 'Restore from Google Drive',
-                                          message: 'This will replace all current data with the backup from Google Drive. This cannot be undone.',
-                                          confirmText: 'Restore',
-                                          confirmColor: Colors.orange,
-                                          onConfirm: _restoreFromDrive,
-                                        ),
-                                        iconColor: const Color(0xFF2196F3),
-                                        isLoading: _isLoading,
-                                      ),
-                                      CustomCupertinoListTile(
-                                        icon: Icons.link_off,
-                                        title: 'Disconnect Google Drive',
-                                        subtitle: 'Sign out from Google backup',
-                                        onTap: () => _showConfirmationDialog(
-                                          title: 'Disconnect',
-                                          message: 'Your existing backups will remain on Google Drive but no new backups will be made.',
-                                          confirmText: 'Disconnect',
-                                          confirmColor: Colors.red,
-                                          onConfirm: _googleSignOut,
-                                        ),
-                                        iconColor: Colors.red,
-                                        isLast: true,
-                                        isLoading: _isLoading,
-                                      ),
+                                      CustomCupertinoListTile(icon: Icons.cloud_upload, title: 'Backup Now', subtitle: 'Upload your data to Google Drive',
+                                        onTap: _backupToDrive, iconColor: const Color(0xFF4CAF50), isLoading: _isLoading),
+                                      CustomCupertinoListTile(icon: Icons.cloud_download, title: 'Restore from Backup', subtitle: 'Download and restore your data',
+                                        onTap: () => _showConfirmationDialog(title: 'Restore', message: 'This will replace all current data with the backup. This cannot be undone.',
+                                          confirmText: 'Restore', confirmColor: Colors.orange, onConfirm: _restoreFromDrive),
+                                        iconColor: const Color(0xFF2196F3), isLoading: _isLoading),
+                                      CustomCupertinoListTile(icon: Icons.link_off, title: 'Disconnect', subtitle: 'Sign out from Google backup',
+                                        onTap: () => _showConfirmationDialog(title: 'Disconnect', message: 'Existing backups will remain. No new backups will be made.',
+                                          confirmText: 'Disconnect', confirmColor: Colors.red, onConfirm: _googleSignOut),
+                                        iconColor: Colors.red, isLast: true, isLoading: _isLoading),
                                     ],
                                   ],
                                 ),
@@ -823,53 +584,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 CupertinoSection(
                                   title: 'Data Management',
                                   children: [
-                                    CustomCupertinoListTile(
-                                      icon: Icons.delete_sweep,
-                                      title: 'Clear Fuel Entries',
-                                      subtitle: 'Remove all fuel entries while keeping odometer data',
-                                      onTap: () => _showConfirmationDialog(
-                                        title: 'Clear Fuel Entries',
-                                        message:
-                                            'This will permanently delete all your fuel entries. Your current odometer reading will be preserved.',
-                                        confirmText: 'Clear Entries',
-                                        confirmColor: Colors.orange,
-                                        onConfirm: _clearFuelEntries,
-                                      ),
-                                      iconColor: Colors.orange,
-                                      isFirst: true,
-                                      isLoading: _isLoading,
-                                    ),
-                                    CustomCupertinoListTile(
-                                      icon: Icons.speed,
-                                      title: 'Clear Odometer Data',
-                                      subtitle: 'Reset current odometer reading while keeping fuel entries',
-                                      onTap: () => _showConfirmationDialog(
-                                        title: 'Clear Odometer Data',
-                                        message:
-                                            'This will reset your current odometer reading. Your fuel entries will be preserved.',
-                                        confirmText: 'Clear Odometer',
-                                        confirmColor: Colors.blue,
-                                        onConfirm: _clearOdometerData,
-                                      ),
-                                      iconColor: Colors.blue,
-                                      isLoading: _isLoading,
-                                    ),
-                                    CustomCupertinoListTile(
-                                      icon: Icons.delete_forever,
-                                      title: 'Clear All Fuel Data',
-                                      subtitle: 'Remove all fuel entries and odometer data',
-                                      onTap: () => _showConfirmationDialog(
-                                        title: 'Clear All Fuel Data',
-                                        message:
-                                            'This will permanently delete ALL your fuel data including entries and odometer readings. This action cannot be undone.',
-                                        confirmText: 'Clear All Data',
-                                        confirmColor: Colors.red,
-                                        onConfirm: _clearAllData,
-                                      ),
-                                      iconColor: Colors.red,
-                                      isLast: true,
-                                      isLoading: _isLoading,
-                                    ),
+                                    CustomCupertinoListTile(icon: Icons.delete_sweep, title: 'Clear Fuel Entries', subtitle: 'Remove all fuel entries',
+                                      onTap: () => _showConfirmationDialog(title: 'Clear Fuel Entries', message: 'This will permanently delete all your fuel entries.',
+                                        confirmText: 'Clear Entries', confirmColor: Colors.orange, onConfirm: _clearFuelEntries),
+                                      iconColor: Colors.orange, isFirst: true, isLoading: _isLoading),
+                                    CustomCupertinoListTile(icon: Icons.speed, title: 'Clear Odometer Data', subtitle: 'Reset current odometer reading',
+                                      onTap: () => _showConfirmationDialog(title: 'Clear Odometer', message: 'This will reset your odometer reading.',
+                                        confirmText: 'Clear Odometer', confirmColor: Colors.blue, onConfirm: _clearOdometerData),
+                                      iconColor: Colors.blue, isLoading: _isLoading),
+                                    CustomCupertinoListTile(icon: Icons.delete_forever, title: 'Clear All Fuel Data', subtitle: 'Remove all entries and odometer data',
+                                      onTap: () => _showConfirmationDialog(title: 'Clear All', message: 'This will permanently delete ALL fuel data. Cannot be undone.',
+                                        confirmText: 'Clear All Data', confirmColor: Colors.red, onConfirm: _clearAllData),
+                                      iconColor: Colors.red, isLast: true, isLoading: _isLoading),
                                   ],
                                 ),
 
@@ -877,23 +603,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 CupertinoSection(
                                   title: 'Advanced',
                                   children: [
-                                    CustomCupertinoListTile(
-                                      icon: Icons.cleaning_services,
-                                      title: 'Clear All Cache & Preferences',
-                                      subtitle: 'Reset the entire app to factory settings',
-                                      onTap: () => _showConfirmationDialog(
-                                        title: 'Clear All Cache',
-                                        message:
-                                            'This will completely reset the app to its initial state. ALL data and preferences will be lost permanently.',
-                                        confirmText: 'Reset App',
-                                        confirmColor: Colors.purple,
-                                        onConfirm: _clearAllCache,
-                                      ),
-                                      iconColor: Colors.purple,
-                                      isFirst: true,
-                                      isLast: true,
-                                      isLoading: _isLoading,
-                                    ),
+                                    CustomCupertinoListTile(icon: Icons.cleaning_services, title: 'Clear All Cache & Preferences', subtitle: 'Reset the entire app to factory settings',
+                                      onTap: () => _showConfirmationDialog(title: 'Clear All Cache', message: 'This will completely reset the app. ALL data will be lost.',
+                                        confirmText: 'Reset App', confirmColor: Colors.purple, onConfirm: _clearAllCache),
+                                      iconColor: Colors.purple, isFirst: true, isLast: true, isLoading: _isLoading),
                                   ],
                                 ),
 
@@ -902,38 +615,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     margin: const EdgeInsets.only(top: 16),
                                     padding: const EdgeInsets.all(20),
                                     decoration: BoxDecoration(
-                                      color: Colors.white.withValues(alpha: 0.95),
+                                      color: isDark ? const Color(0xFF1E1E1E) : Colors.white.withValues(alpha: 0.95),
                                       borderRadius: BorderRadius.circular(16),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withValues(alpha: 0.05),
-                                          blurRadius: 10,
-                                          offset: const Offset(0, 4),
-                                          spreadRadius: -2,
-                                        ),
-                                      ],
-                                      border: Border.all(color: Colors.blue.withValues(alpha: 0.2), width: 1),
+                                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))],
                                     ),
                                     child: Row(
                                       mainAxisAlignment: MainAxisAlignment.center,
                                       children: [
-                                        SizedBox(
-                                          width: 20,
-                                          height: 20,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            valueColor: AlwaysStoppedAnimation<Color>(Colors.blue.shade600),
-                                          ),
-                                        ),
+                                        SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Colors.blue.shade600))),
                                         const SizedBox(width: 16),
-                                        Text(
-                                          'Processing...',
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w500,
-                                            color: Colors.grey.shade700,
-                                          ),
-                                        ),
+                                        Text('Processing...', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: isDark ? Colors.grey.shade300 : Colors.grey.shade700)),
                                       ],
                                     ),
                                   ),
@@ -951,6 +642,92 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  IconData _getThemeIcon(ThemeMode mode) {
+    switch (mode) {
+      case ThemeMode.light: return Icons.light_mode;
+      case ThemeMode.dark: return Icons.dark_mode;
+      case ThemeMode.system: return Icons.brightness_auto;
+    }
+  }
+
+  String _getThemeLabel(ThemeMode mode) {
+    switch (mode) {
+      case ThemeMode.light: return 'Light';
+      case ThemeMode.dark: return 'Dark';
+      case ThemeMode.system: return 'System';
+    }
+  }
+
+  void _showThemeDialog() {
+    final themeNotifier = ref.read(themeProvider.notifier);
+    final currentMode = ref.read(themeProvider).themeMode;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Choose Theme'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: ThemeMode.values.map((mode) {
+              return RadioListTile<ThemeMode>(
+                title: Text(_getThemeLabel(mode)),
+                secondary: Icon(_getThemeIcon(mode)),
+                value: mode,
+                groupValue: currentMode,
+                onChanged: (value) {
+                  if (value != null) {
+                    themeNotifier.setThemeMode(value);
+                    Navigator.pop(context);
+                  }
+                },
+              );
+            }).toList(),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showAccentColorDialog() {
+    final themeNotifier = ref.read(themeProvider.notifier);
+    final currentColor = ref.read(themeProvider).accentColor;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Choose Accent Color'),
+          content: Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: ThemeService.accentColors.map((color) {
+              // ignore: deprecated_member_use
+              final isSelected = color.value == currentColor.value;
+              return GestureDetector(
+                onTap: () {
+                  themeNotifier.setAccentColor(color);
+                  Navigator.pop(context);
+                },
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: isSelected ? Colors.white : Colors.transparent, width: 3),
+                    boxShadow: isSelected ? [BoxShadow(color: color.withValues(alpha: 0.5), blurRadius: 8, spreadRadius: 2)] : null,
+                  ),
+                  child: isSelected ? const Icon(Icons.check, color: Colors.white, size: 22) : null,
+                ),
+              );
+            }).toList(),
+          ),
+        );
+      },
     );
   }
 }

@@ -3,6 +3,7 @@ import 'package:isar/isar.dart';
 import '../models/fuel_entry.dart';
 import 'database_service.dart';
 import 'sync_service.dart';
+import 'vehicle_service.dart';
 
 class FuelStorageService {
   static Future<List<FuelEntry>> getFuelEntries() async {
@@ -76,6 +77,24 @@ class FuelStorageService {
         .sortByDateTimeDesc()
         .findFirst();
     return lastEntry?.odometerReading;
+  }
+
+  static Future<double?> getLastOdometerForVehicle(String? vehicleId) async {
+    if (vehicleId == null) return getCurrentOdometer();
+    final entryIds = await VehicleService.getEntryIdsForVehicle(vehicleId);
+    if (entryIds.isEmpty) return null;
+    final isar = await DatabaseService.database;
+    final entries = await isar.fuelEntrys
+        .filter()
+        .odometerReadingIsNotNull()
+        .sortByDateTimeDesc()
+        .findAll();
+    for (final entry in entries) {
+      if (entryIds.contains(entry.id)) {
+        return entry.odometerReading;
+      }
+    }
+    return null;
   }
 
   static Future<void> setCurrentOdometer(double odometer) async {

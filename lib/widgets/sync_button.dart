@@ -30,10 +30,11 @@ class SyncButton extends StatelessWidget {
         ? 'Last sync: ${SyncService.formatLastSyncTime(lastSyncTime)}'
         : 'Authenticate to sync data';
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -50,7 +51,7 @@ class SyncButton extends StatelessWidget {
           ),
         ],
         border: Border.all(
-          color: Colors.grey.withValues(alpha: 0.1),
+          color: isDark ? Colors.grey.shade800 : Colors.grey.withValues(alpha: 0.1),
           width: 0.5,
         ),
       ),
@@ -109,7 +110,7 @@ class SyncButton extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w600,
-                          color: Colors.black87,
+                          color: isDark ? Colors.white : Colors.black87,
                           letterSpacing: -0.2,
                         ),
                       ),
@@ -118,7 +119,7 @@ class SyncButton extends StatelessWidget {
                         subtitle,
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.grey.shade600,
+                          color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
                           fontWeight: FontWeight.w400,
                           letterSpacing: -0.1,
                         ),
@@ -131,7 +132,7 @@ class SyncButton extends StatelessWidget {
                   Icon(
                     isAuthenticated ? CupertinoIcons.arrow_2_circlepath : CupertinoIcons.chevron_right,
                     size: 16,
-                    color: Colors.grey.shade400,
+                    color: isDark ? Colors.grey.shade600 : Colors.grey.shade400,
                   ),
               ],
             ),

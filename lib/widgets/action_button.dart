@@ -21,10 +21,11 @@ class ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -41,7 +42,7 @@ class ActionButton extends StatelessWidget {
           ),
         ],
         border: Border.all(
-          color: Colors.grey.withValues(alpha: 0.1),
+          color: isDark ? Colors.grey.shade800 : Colors.grey.withValues(alpha: 0.1),
           width: 0.5,
         ),
       ),
@@ -56,7 +57,6 @@ class ActionButton extends StatelessWidget {
             padding: const EdgeInsets.all(20),
             child: Row(
               children: [
-                // Icon container with Cupertino style
                 Container(
                   width: 44,
                   height: 44,
@@ -72,14 +72,9 @@ class ActionButton extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: Icon(
-                    icon,
-                    size: 22,
-                    color: Colors.white,
-                  ),
+                  child: Icon(icon, size: 22, color: Colors.white),
                 ),
                 const SizedBox(width: 16),
-                // Text content
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -89,7 +84,7 @@ class ActionButton extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w600,
-                          color: Colors.black87,
+                          color: isDark ? Colors.white : Colors.black87,
                           letterSpacing: -0.2,
                         ),
                       ),
@@ -98,7 +93,7 @@ class ActionButton extends StatelessWidget {
                         subtitle,
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.grey.shade600,
+                          color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
                           fontWeight: FontWeight.w400,
                           letterSpacing: -0.1,
                         ),
@@ -106,11 +101,10 @@ class ActionButton extends StatelessWidget {
                     ],
                   ),
                 ),
-                // Cupertino-style chevron
                 Icon(
                   CupertinoIcons.chevron_right,
                   size: 16,
-                  color: Colors.grey.shade400,
+                  color: isDark ? Colors.grey.shade600 : Colors.grey.shade400,
                 ),
               ],
             ),

@@ -27,6 +27,7 @@ class CustomCupertinoListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -37,7 +38,7 @@ class CustomCupertinoListTile extends StatelessWidget {
             border: !isLast
                 ? Border(
                     bottom: BorderSide(
-                      color: Colors.grey.withValues(alpha: 0.2),
+                      color: isDark ? Colors.grey.shade800 : Colors.grey.withValues(alpha: 0.2),
                       width: 0.5,
                     ),
                   )
@@ -52,11 +53,7 @@ class CustomCupertinoListTile extends StatelessWidget {
                   color: iconColor,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(
-                  icon,
-                  color: Colors.white,
-                  size: 18,
-                ),
+                child: Icon(icon, color: Colors.white, size: 18),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -65,19 +62,19 @@ class CustomCupertinoListTile extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
-                        color: Colors.black87,
+                        color: isDark ? Colors.white : Colors.black87,
                       ),
                     ),
-                    if (subtitle.isNotEmpty) ...[ 
+                    if (subtitle.isNotEmpty) ...[
                       const SizedBox(height: 2),
                       Text(
                         subtitle,
                         style: TextStyle(
                           fontSize: 13,
-                          color: Colors.grey.shade600,
+                          color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
                         ),
                       ),
                     ],
@@ -87,7 +84,7 @@ class CustomCupertinoListTile extends StatelessWidget {
               trailing ??
                   Icon(
                     CupertinoIcons.chevron_right,
-                    color: Colors.grey.shade400,
+                    color: isDark ? Colors.grey.shade600 : Colors.grey.shade400,
                     size: 16,
                   ),
             ],

@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import '../providers/fuel_entries_provider.dart';
-import '../providers/summary_providers.dart';
 import '../services/budget_service.dart';
 import '../services/currency_service.dart';
 

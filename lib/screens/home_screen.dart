@@ -1,15 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/auth_service.dart' show AuthService;
+import '../services/vehicle_service.dart';
+import '../services/budget_service.dart';
 import '../widgets/widgets.dart';
 import '../providers/fuel_entries_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/summary_providers.dart';
 import '../providers/sync_provider.dart';
+import '../providers/vehicle_provider.dart';
+import '../models/vehicle.dart';
 import 'add_fuel_screen.dart';
 import 'fuel_history_screen.dart';
 import 'settings_screen.dart';
-import 'how_to_use_screen.dart'; 
+import 'how_to_use_screen.dart';
+import 'trip_calculator_screen.dart';
+import 'budget_report_screen.dart';
+import 'vehicle_management_screen.dart';
+
+const Map<String, IconData> _vehicleIconMap = {
+  'directions_car': Icons.directions_car,
+  'two_wheeler': Icons.two_wheeler,
+  'local_shipping': Icons.local_shipping,
+  'airport_shuttle': Icons.airport_shuttle,
+  'electric_car': Icons.electric_car,
+  'pedal_bike': Icons.pedal_bike,
+};
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -26,35 +42,40 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
   late Animation<Offset> _slideAnimation;
   late Animation<double> _staggeredAnimation;
 
+  List<Vehicle> _vehicles = [];
+  String? _selectedVehicleId;
+
   @override
   void initState() {
     super.initState();
+    _loadVehicles();
 
-    // Initialize animation controllers
     _fadeAnimationController = AnimationController(duration: const Duration(milliseconds: 800), vsync: this);
     _slideAnimationController = AnimationController(duration: const Duration(milliseconds: 600), vsync: this);
     _staggeredAnimationController = AnimationController(duration: const Duration(milliseconds: 1200), vsync: this);
 
-    // Initialize animations
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(parent: _fadeAnimationController, curve: Curves.easeInOut));
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0)
+        .animate(CurvedAnimation(parent: _fadeAnimationController, curve: Curves.easeInOut));
+    _slideAnimation = Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _slideAnimationController, curve: Curves.easeOutCubic));
+    _staggeredAnimation = Tween<double>(begin: 0.0, end: 1.0)
+        .animate(CurvedAnimation(parent: _staggeredAnimationController, curve: Curves.easeOutCubic));
 
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _slideAnimationController, curve: Curves.easeOutCubic));
-
-    _staggeredAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(parent: _staggeredAnimationController, curve: Curves.easeOutCubic));
-
-    // Start animations
     _fadeAnimationController.forward();
     _slideAnimationController.forward();
     _staggeredAnimationController.forward();
+  }
+
+  Future<void> _loadVehicles() async {
+    final vehicles = await VehicleService.getVehicles();
+    final selectedId = await VehicleService.getSelectedVehicleId();
+    if (mounted) {
+      setState(() {
+        _vehicles = vehicles;
+        _selectedVehicleId = selectedId;
+      });
+      ref.read(selectedVehicleIdProvider.notifier).state = selectedId;
+    }
   }
 
   @override
@@ -82,6 +103,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
     required String value,
     required Color color,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Row(
       children: [
         Container(
@@ -97,7 +119,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
         Expanded(
           child: Text(
             label,
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Colors.grey.shade700),
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: isDark ? Colors.grey.shade300 : Colors.grey.shade700),
           ),
         ),
         Text(
@@ -110,36 +132,38 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
 
   @override
   Widget build(BuildContext context) {
-    // Watch all the providers
-    final entriesAsync = ref.watch(fuelEntriesProvider);
-    final totalCostAsync = ref.watch(totalCostProvider);
-    final totalLitersAsync = ref.watch(totalLitersProvider);
-    final mileageCalculationsAsync = ref.watch(mileageCalculationsProvider);
+    final entriesAsync = ref.watch(vehicleFilteredEntriesProvider);
+    final totalCostAsync = ref.watch(filteredTotalCostProvider);
+    final totalLitersAsync = ref.watch(filteredTotalLitersProvider);
+    final mileageCalculationsAsync = ref.watch(filteredMileageCalculationsProvider);
     final currencyAsync = ref.watch(currencyProvider);
     final authAsync = ref.watch(authenticationProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              const Color(0xFF2196F3).withValues(alpha: 0.1),
-              const Color(0xFF21CBF3).withValues(alpha: 0.05),
-              Colors.white,
-            ],
+            colors: isDark
+                ? [const Color(0xFF1a1a2e).withValues(alpha: 0.3), const Color(0xFF121212)]
+                : [
+                    const Color(0xFF2196F3).withValues(alpha: 0.1),
+                    const Color(0xFF21CBF3).withValues(alpha: 0.05),
+                    Colors.white,
+                  ],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
         ),
         child: SafeArea(
           child: SingleChildScrollView(
-            padding: EdgeInsets.only(bottom: 50.0),
+            padding: const EdgeInsets.only(bottom: 50.0),
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Header Section with fade and slide animation
+                  // Header Section
                   FadeTransition(
                     opacity: _fadeAnimation,
                     child: SlideTransition(
@@ -155,12 +179,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                                 style: TextStyle(
                                   fontSize: 28,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.grey.shade800,
+                                  color: isDark ? Colors.white : Colors.grey.shade800,
                                 ),
                               ),
                               Text(
                                 'Monitor your fuel efficiency',
-                                style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+                                style: TextStyle(fontSize: 16, color: isDark ? Colors.grey.shade400 : Colors.grey.shade600),
                               ),
                             ],
                           ),
@@ -168,51 +192,38 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                             children: [
                               Container(
                                 decoration: BoxDecoration(
-                                  color: Colors.white,
+                                  color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
                                   borderRadius: BorderRadius.circular(16),
                                   boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.1),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 2),
-                                    ),
+                                    BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8, offset: const Offset(0, 2)),
                                   ],
                                 ),
                                 child: IconButton(
-                                  icon: const Icon(Icons.help_outline, color: Color(0xFF2196F3)),
+                                  icon: Icon(Icons.help_outline, color: Theme.of(context).colorScheme.primary),
                                   onPressed: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(builder: (context) => const HowToUseScreen()),
-                                    );
+                                    Navigator.push(context, MaterialPageRoute(builder: (context) => const HowToUseScreen()));
                                   },
                                 ),
                               ),
                               const SizedBox(width: 12),
                               Container(
                                 decoration: BoxDecoration(
-                                  color: Colors.white,
+                                  color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
                                   borderRadius: BorderRadius.circular(16),
                                   boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.1),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 2),
-                                    ),
+                                    BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8, offset: const Offset(0, 2)),
                                   ],
                                 ),
                                 child: IconButton(
-                                  icon: const Icon(Icons.settings, color: Color(0xFF2196F3)),
+                                  icon: Icon(Icons.settings, color: Theme.of(context).colorScheme.primary),
                                   onPressed: () async {
-                                    await Navigator.push(
-                                      context,
-                                      MaterialPageRoute(builder: (context) => const SettingsScreen()),
-                                    );
-                                    // Refresh providers after returning from settings
+                                    await Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsScreen()));
                                     ref.invalidate(fuelEntriesProvider);
                                     ref.invalidate(authenticationProvider);
                                     ref.invalidate(currencyProvider);
                                     ref.invalidate(syncStatusProvider);
+                                    ref.invalidate(vehiclesProvider);
+                                    _loadVehicles();
                                   },
                                 ),
                               ),
@@ -225,6 +236,122 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
 
                   const SizedBox(height: 10),
 
+                  // Vehicle Selector
+                  StaggeredAnimationWrapper(
+                    index: 0,
+                    animation: _staggeredAnimation,
+                    child: SizedBox(
+                      height: 38,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: ListView(
+                              scrollDirection: Axis.horizontal,
+                              children: [
+                                // "All" chip
+                                _buildVehicleChip(
+                                  id: null,
+                                  label: 'All',
+                                  icon: Icons.dashboard_rounded,
+                                  isSelected: _selectedVehicleId == null,
+                                  isDark: isDark,
+                                ),
+                                ..._vehicles.map((v) => _buildVehicleChip(
+                                      id: v.id,
+                                      label: v.name,
+                                      icon: _vehicleIconMap[v.iconName] ?? Icons.directions_car,
+                                      isSelected: _selectedVehicleId == v.id,
+                                      isDark: isDark,
+                                    )),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          GestureDetector(
+                            onTap: () async {
+                              await Navigator.push(context, MaterialPageRoute(builder: (_) => const VehicleManagementScreen()));
+                              ref.invalidate(vehiclesProvider);
+                              _loadVehicles();
+                            },
+                            child: Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: isDark ? Colors.grey.shade700 : Colors.grey.withValues(alpha: 0.3),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Icon(
+                                _vehicles.isEmpty ? Icons.add_rounded : Icons.tune_rounded,
+                                color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                                size: 15,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 6),
+
+                  // Quick Stats Card
+                  StaggeredAnimationWrapper(
+                    index: 0,
+                    animation: _staggeredAnimation,
+                    child: entriesAsync.when(
+                      data: (entries) => currencyAsync.when(
+                        data: (currency) {
+                          if (entries.isEmpty) return const SizedBox();
+                          final now = DateTime.now();
+                          final thisMonthSpent = BudgetService.getMonthlySpending(entries, now.year, now.month);
+                          final daysSinceLastFill = entries.isNotEmpty
+                              ? now.difference(entries.last.dateTime).inDays
+                              : 0;
+                          final lastCost = entries.isNotEmpty ? entries.last.totalCost : 0.0;
+
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 10),
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: isDark
+                                    ? [const Color(0xFF667eea).withValues(alpha: 0.3), const Color(0xFF764ba2).withValues(alpha: 0.3)]
+                                    : [const Color(0xFF667eea), const Color(0xFF764ba2)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [BoxShadow(color: const Color(0xFF667eea).withValues(alpha: 0.3), blurRadius: 15, offset: const Offset(0, 8))],
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: _buildQuickStat('This Month', '$currency${thisMonthSpent.toStringAsFixed(0)}', Icons.calendar_month),
+                                ),
+                                Container(width: 1, height: 40, color: Colors.white.withValues(alpha: 0.3)),
+                                Expanded(
+                                  child: _buildQuickStat('Last Fill', '$currency${lastCost.toStringAsFixed(0)}', Icons.local_gas_station),
+                                ),
+                                Container(width: 1, height: 40, color: Colors.white.withValues(alpha: 0.3)),
+                                Expanded(
+                                  child: _buildQuickStat('Days Ago', '$daysSinceLastFill', Icons.schedule),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                        loading: () => const SizedBox(),
+                        error: (_, __) => const SizedBox(),
+                      ),
+                      loading: () => const SizedBox(),
+                      error: (_, __) => const SizedBox(),
+                    ),
+                  ),
+
                   // Summary Section
                   StaggeredAnimationWrapper(
                     index: 1,
@@ -232,24 +359,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                     child: Container(
                       margin: EdgeInsets.symmetric(vertical: MediaQuery.of(context).size.width < 400 ? 8 : 10),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.08),
-                            blurRadius: 20,
-                            offset: const Offset(0, 8),
-                            spreadRadius: -4,
-                          ),
+                          BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 20, offset: const Offset(0, 8), spreadRadius: -4),
                         ],
-                        border: Border.all(color: Colors.grey.withValues(alpha: 0.1), width: 0.5),
+                        border: Border.all(color: isDark ? Colors.grey.shade800 : Colors.grey.withValues(alpha: 0.1), width: 0.5),
                       ),
                       child: Padding(
                         padding: EdgeInsets.all(MediaQuery.of(context).size.width < 400 ? 20 : 24),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Header
                             Row(
                               children: [
                                 Container(
@@ -259,127 +380,55 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(color: const Color(0xFF667eea).withValues(alpha: 0.2), width: 1),
                                   ),
-                                  child: Icon(Icons.analytics_rounded, color: const Color(0xFF667eea), size: 20),
+                                  child: const Icon(Icons.analytics_rounded, color: Color(0xFF667eea), size: 20),
                                 ),
                                 const SizedBox(width: 12),
-                                Text(
-                                  'Summary',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.grey.shade800,
-                                  ),
-                                ),
+                                Text('Summary', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.grey.shade800)),
                               ],
                             ),
                             const SizedBox(height: 20),
-
-                            // Cost Line
                             totalCostAsync.when(
                               data: (totalCost) => currencyAsync.when(
-                                data: (currency) => _buildSummaryLine(
-                                  icon: Icons.payments_rounded,
-                                  label: 'Total Cost',
-                                  value: '$currency${totalCost.toStringAsFixed(2)}',
-                                  color: const Color(0xFFE91E63),
-                                ),
+                                data: (currency) => _buildSummaryLine(icon: Icons.payments_rounded, label: 'Total Cost', value: '$currency${totalCost.toStringAsFixed(2)}', color: const Color(0xFFE91E63)),
                                 loading: () => const CircularProgressIndicator(),
                                 error: (e, _) => Text('Error: $e'),
                               ),
                               loading: () => const CircularProgressIndicator(),
                               error: (e, _) => Text('Error: $e'),
                             ),
-
                             const SizedBox(height: 16),
-
-                            // Liters Line
                             totalLitersAsync.when(
-                              data: (totalLiters) => _buildSummaryLine(
-                                icon: Icons.local_gas_station_rounded,
-                                label: 'Total Liters',
-                                value: '${totalLiters.toStringAsFixed(1)}L',
-                                color: const Color(0xFF2196F3),
-                              ),
+                              data: (totalLiters) => _buildSummaryLine(icon: Icons.local_gas_station_rounded, label: 'Total Liters', value: '${totalLiters.toStringAsFixed(1)}L', color: const Color(0xFF2196F3)),
                               loading: () => const CircularProgressIndicator(),
                               error: (e, _) => Text('Error: $e'),
                             ),
-
                             const SizedBox(height: 16),
-
-                            // Distance Line
                             mileageCalculationsAsync.when(
-                              data: (calculations) => _buildSummaryLine(
-                                icon: Icons.route_rounded,
-                                label: 'Total Distance',
-                                value: calculations['totalDistance']! > 0
-                                    ? '${calculations['totalDistance']!.toStringAsFixed(0)} km'
-                                    : 'N/A',
-                                color: const Color(0xFFFF9800),
-                              ),
+                              data: (calculations) => _buildSummaryLine(icon: Icons.route_rounded, label: 'Total Distance', value: calculations['totalDistance']! > 0 ? '${calculations['totalDistance']!.toStringAsFixed(0)} km' : 'N/A', color: const Color(0xFFFF9800)),
                               loading: () => const CircularProgressIndicator(),
                               error: (e, _) => Text('Error: $e'),
                             ),
-
                             const SizedBox(height: 16),
-
-                            // Last Trip Mileage Line
                             mileageCalculationsAsync.when(
-                              data: (calculations) => _buildSummaryLine(
-                                icon: Icons.directions_car_rounded,
-                                label: 'Last Trip Mileage',
-                                value: calculations['lastTripMileage']! > 0
-                                    ? '${calculations['lastTripMileage']!.toStringAsFixed(1)} km/L'
-                                    : 'N/A',
-                                color: const Color(0xFF4CAF50),
-                              ),
+                              data: (calculations) => _buildSummaryLine(icon: Icons.directions_car_rounded, label: 'Last Trip Mileage', value: calculations['lastTripMileage']! > 0 ? '${calculations['lastTripMileage']!.toStringAsFixed(1)} km/L' : 'N/A', color: const Color(0xFF4CAF50)),
                               loading: () => const CircularProgressIndicator(),
                               error: (e, _) => Text('Error: $e'),
                             ),
-
                             const SizedBox(height: 16),
-
-                            // Overall Mileage Line
                             mileageCalculationsAsync.when(
-                              data: (calculations) => _buildSummaryLine(
-                                icon: Icons.trending_up_rounded,
-                                label: 'Overall Mileage',
-                                value: calculations['overallMileage']! > 0
-                                    ? '${calculations['overallMileage']!.toStringAsFixed(1)} km/L'
-                                    : 'N/A',
-                                color: const Color(0xFF9C27B0),
-                              ),
+                              data: (calculations) => _buildSummaryLine(icon: Icons.trending_up_rounded, label: 'Overall Mileage', value: calculations['overallMileage']! > 0 ? '${calculations['overallMileage']!.toStringAsFixed(1)} km/L' : 'N/A', color: const Color(0xFF9C27B0)),
                               loading: () => const CircularProgressIndicator(),
                               error: (e, _) => Text('Error: $e'),
                             ),
-
                             const SizedBox(height: 16),
-
-                            // Max Mileage Line
                             mileageCalculationsAsync.when(
-                              data: (calculations) => _buildSummaryLine(
-                                icon: Icons.keyboard_double_arrow_up_rounded,
-                                label: 'Max Mileage',
-                                value: calculations['maxMileage']! > 0
-                                    ? '${calculations['maxMileage']!.toStringAsFixed(1)} km/L'
-                                    : 'N/A',
-                                color: const Color(0xFF00C853),
-                              ),
+                              data: (calculations) => _buildSummaryLine(icon: Icons.keyboard_double_arrow_up_rounded, label: 'Max Mileage', value: calculations['maxMileage']! > 0 ? '${calculations['maxMileage']!.toStringAsFixed(1)} km/L' : 'N/A', color: const Color(0xFF00C853)),
                               loading: () => const CircularProgressIndicator(),
                               error: (e, _) => Text('Error: $e'),
                             ),
-
                             const SizedBox(height: 16),
-
-                            // Min Mileage Line
                             mileageCalculationsAsync.when(
-                              data: (calculations) => _buildSummaryLine(
-                                icon: Icons.keyboard_double_arrow_down_rounded,
-                                label: 'Min Mileage',
-                                value: calculations['minMileage']! > 0
-                                    ? '${calculations['minMileage']!.toStringAsFixed(1)} km/L'
-                                    : 'N/A',
-                                color: const Color(0xFFFF5722),
-                              ),
+                              data: (calculations) => _buildSummaryLine(icon: Icons.keyboard_double_arrow_down_rounded, label: 'Min Mileage', value: calculations['minMileage']! > 0 ? '${calculations['minMileage']!.toStringAsFixed(1)} km/L' : 'N/A', color: const Color(0xFFFF5722)),
                               loading: () => const CircularProgressIndicator(),
                               error: (e, _) => Text('Error: $e'),
                             ),
@@ -408,14 +457,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
 
                   const SizedBox(height: 16),
 
-                  // Action Buttons section with staggered animation
+                  // Action Buttons
                   StaggeredAnimationWrapper(
                     index: 3,
                     animation: _staggeredAnimation,
-                    child: Text(
-                      'Quick Actions',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.grey.shade800),
-                    ),
+                    child: Text('Quick Actions', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.grey.shade800)),
                   ),
                   const SizedBox(height: 12),
 
@@ -428,7 +474,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                       subtitle: _getButtonSubtitle('Add Fuel Entry'),
                       onPressed: () async {
                         await Navigator.push(context, MaterialPageRoute(builder: (context) => const AddFuelScreen()));
-                        // Refresh providers after adding entry
                         ref.invalidate(fuelEntriesProvider);
                         ref.invalidate(syncStatusProvider);
                       },
@@ -445,11 +490,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                       title: 'View Fuel History',
                       subtitle: _getButtonSubtitle('View Fuel History'),
                       onPressed: () async {
-                        await Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const FuelHistoryScreen()),
-                        );
-                        // Refresh providers after returning from history
+                        await Navigator.push(context, MaterialPageRoute(builder: (context) => const FuelHistoryScreen()));
                         ref.invalidate(fuelEntriesProvider);
                         ref.invalidate(syncStatusProvider);
                       },
@@ -459,6 +500,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
 
                   StaggeredAnimationWrapper(
                     index: 6,
+                    animation: _staggeredAnimation,
+                    child: ActionButton(
+                      icon: Icons.calculate_rounded,
+                      title: 'Trip Cost Calculator',
+                      subtitle: 'Estimate fuel cost for a trip',
+                      onPressed: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (context) => const TripCalculatorScreen()));
+                      },
+                      color: const Color(0xFF9C27B0),
+                    ),
+                  ),
+
+                  StaggeredAnimationWrapper(
+                    index: 7,
+                    animation: _staggeredAnimation,
+                    child: ActionButton(
+                      icon: Icons.bar_chart_rounded,
+                      title: 'Budget & Reports',
+                      subtitle: 'Monthly spending & budget tracking',
+                      onPressed: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (context) => const BudgetReportScreen()));
+                      },
+                      color: const Color(0xFFFF9800),
+                    ),
+                  ),
+
+                  StaggeredAnimationWrapper(
+                    index: 8,
                     animation: _staggeredAnimation,
                     child: authAsync.when(
                       data: (isAuthenticated) {
@@ -494,6 +563,84 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildVehicleChip({
+    required String? id,
+    required String label,
+    required IconData icon,
+    required bool isSelected,
+    required bool isDark,
+  }) {
+    final primaryColor = Theme.of(context).colorScheme.primary;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: GestureDetector(
+        onTap: () async {
+          setState(() => _selectedVehicleId = id);
+          await VehicleService.setSelectedVehicleId(id);
+          ref.read(selectedVehicleIdProvider.notifier).state = id;
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? primaryColor
+                : isDark
+                    ? const Color(0xFF1E1E1E)
+                    : Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isSelected
+                  ? primaryColor
+                  : isDark
+                      ? Colors.grey.shade700
+                      : Colors.grey.withValues(alpha: 0.3),
+              width: 1,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 15,
+                color: isSelected
+                    ? Colors.white
+                    : isDark
+                        ? Colors.grey.shade400
+                        : Colors.grey.shade600,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: isSelected
+                      ? Colors.white
+                      : isDark
+                          ? Colors.grey.shade300
+                          : Colors.grey.shade700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickStat(String label, String value, IconData icon) {
+    return Column(
+      children: [
+        Icon(icon, color: Colors.white.withValues(alpha: 0.8), size: 18),
+        const SizedBox(height: 6),
+        Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+        Text(label, style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.7))),
+      ],
     );
   }
 }
