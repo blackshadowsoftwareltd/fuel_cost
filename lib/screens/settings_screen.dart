@@ -13,6 +13,9 @@ import '../services/currency_service.dart';
 import '../services/drive_backup_service.dart';
 import '../services/budget_service.dart';
 import '../services/theme_service.dart';
+import '../services/vehicle_service.dart';
+import '../models/vehicle.dart';
+import '../models/fuel_entry.dart';
 import '../providers/theme_provider.dart';
 import '../widgets/widgets.dart';
 
@@ -239,18 +242,60 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _exportCsv() async {
+    final vehicles = await VehicleService.getVehicles();
+    if (!mounted) return;
+
+    // Show vehicle selection dialog
+    final selectedVehicleId = await _showVehiclePickerDialog(
+      title: 'Export Data',
+      subtitle: 'Select which vehicle data to export',
+      vehicles: vehicles,
+    );
+    if (selectedVehicleId == null) return; // User cancelled
+
     setState(() => _isLoading = true);
     try {
-      final csvContent = await FuelStorageService.exportToCsv();
+      final allEntries = await FuelStorageService.getFuelEntries();
+
+      List<FuelEntry> entriesToExport;
+      String fileName;
+      if (selectedVehicleId == '__all__') {
+        entriesToExport = allEntries;
+        fileName = 'fuel_entries_all.csv';
+      } else {
+        final entryIds = await VehicleService.getEntryIdsForVehicle(selectedVehicleId);
+        entriesToExport = allEntries.where((e) => entryIds.contains(e.id)).toList();
+        final vehicle = vehicles.firstWhere((v) => v.id == selectedVehicleId);
+        fileName = 'fuel_entries_${vehicle.name.replaceAll(' ', '_').toLowerCase()}.csv';
+      }
+
+      if (entriesToExport.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: const Row(children: [Icon(Icons.info_outline, color: Colors.white), SizedBox(width: 12), Text('No entries to export for this vehicle')]),
+              backgroundColor: Colors.orange, behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+          );
+        }
+        return;
+      }
+
+      final buffer = StringBuffer();
+      buffer.writeln('id,liters,pricePerLiter,totalCost,dateTime,odometerReading');
+      for (final entry in entriesToExport) {
+        buffer.writeln(
+          '${entry.id},${entry.liters},${entry.pricePerLiter},${entry.totalCost},${entry.dateTime.toIso8601String()},${entry.odometerReading ?? ''}',
+        );
+      }
+
       final dir = await getTemporaryDirectory();
-      final file = File('${dir.path}/fuel_entries.csv');
-      await file.writeAsString(csvContent);
+      final file = File('${dir.path}/$fileName');
+      await file.writeAsString(buffer.toString());
       final box = context.findRenderObject() as RenderBox?;
       await Share.shareXFiles([XFile(file.path)], text: 'Fuel Cost Export',
         sharePositionOrigin: box != null ? box.localToGlobal(Offset.zero) & box.size : const Rect.fromLTWH(0, 0, 100, 100));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: const Row(children: [Icon(Icons.check_circle, color: Colors.white), SizedBox(width: 12), Text('CSV exported successfully')]),
+          SnackBar(content: Row(children: [const Icon(Icons.check_circle, color: Colors.white), const SizedBox(width: 12), Text('${entriesToExport.length} entries exported')]),
             backgroundColor: Colors.green, behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
         );
       }
@@ -265,6 +310,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _importCsv() async {
+    final vehicles = await VehicleService.getVehicles();
+    if (!mounted) return;
+
+    // Show vehicle selection dialog for assigning imported entries
+    final selectedVehicleId = await _showVehiclePickerDialog(
+      title: 'Import Data',
+      subtitle: 'Assign imported entries to a vehicle',
+      vehicles: vehicles,
+      showUnassigned: true,
+    );
+    if (selectedVehicleId == null) return; // User cancelled
+
     setState(() => _isLoading = true);
     try {
       final result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['csv']);
@@ -274,10 +331,50 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       }
       final file = File(result.files.single.path!);
       final csvContent = await file.readAsString();
-      final imported = await FuelStorageService.importFromCsv(csvContent);
+
+      // Parse and import entries
+      final lines = csvContent.trim().split('\n');
+      if (lines.length < 2) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: const Text('CSV file is empty or invalid'), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating));
+        }
+        return;
+      }
+
+      int imported = 0;
+      for (int i = 1; i < lines.length; i++) {
+        final line = lines[i].trim();
+        if (line.isEmpty) continue;
+        final parts = line.split(',');
+        if (parts.length < 5) continue;
+        try {
+          final entry = FuelEntry()
+            ..id = parts[0]
+            ..liters = double.parse(parts[1])
+            ..pricePerLiter = double.parse(parts[2])
+            ..totalCost = double.parse(parts[3])
+            ..dateTime = DateTime.parse(parts[4])
+            ..odometerReading = parts.length > 5 && parts[5].isNotEmpty ? double.parse(parts[5]) : null;
+
+          await FuelStorageService.saveFuelEntry(entry);
+
+          // Assign to selected vehicle if not "unassigned"
+          if (selectedVehicleId != '__all__' && selectedVehicleId != '__none__') {
+            await VehicleService.assignVehicleToEntry(entry.id, selectedVehicleId);
+          }
+          imported++;
+        } catch (e) {
+          debugPrint('Skipping invalid CSV row $i: $e');
+        }
+      }
+
       if (mounted) {
+        final vehicleName = selectedVehicleId == '__all__' || selectedVehicleId == '__none__'
+            ? ''
+            : ' to ${vehicles.firstWhere((v) => v.id == selectedVehicleId).name}';
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Row(children: [const Icon(Icons.check_circle, color: Colors.white), const SizedBox(width: 12), Text('$imported entries imported successfully')]),
+          SnackBar(content: Row(children: [const Icon(Icons.check_circle, color: Colors.white), const SizedBox(width: 12), Expanded(child: Text('$imported entries imported$vehicleName'))]),
             backgroundColor: Colors.green, behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
         );
       }
@@ -288,6 +385,124 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  static const Map<String, IconData> _vehicleIconMap = {
+    'directions_car': Icons.directions_car,
+    'two_wheeler': Icons.two_wheeler,
+    'local_shipping': Icons.local_shipping,
+    'airport_shuttle': Icons.airport_shuttle,
+    'electric_car': Icons.electric_car,
+    'pedal_bike': Icons.pedal_bike,
+  };
+
+  /// Shows a dialog to pick a vehicle for export/import.
+  /// Returns the vehicle ID, '__all__' for all vehicles, '__none__' for unassigned, or null if cancelled.
+  Future<String?> _showVehiclePickerDialog({
+    required String title,
+    required String subtitle,
+    required List<Vehicle> vehicles,
+    bool showUnassigned = false,
+  }) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(title),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(subtitle, style: TextStyle(fontSize: 14, color: isDark ? Colors.grey.shade400 : Colors.grey.shade600)),
+                const SizedBox(height: 16),
+                // All vehicles option
+                _buildVehicleOption(
+                  context: context,
+                  icon: Icons.dashboard_rounded,
+                  label: 'All Vehicles',
+                  subtitle: 'Include data from all vehicles',
+                  color: const Color(0xFF667eea),
+                  onTap: () => Navigator.pop(context, '__all__'),
+                  isDark: isDark,
+                ),
+                if (showUnassigned)
+                  _buildVehicleOption(
+                    context: context,
+                    icon: Icons.help_outline,
+                    label: 'No Vehicle',
+                    subtitle: 'Don\'t assign to any vehicle',
+                    color: Colors.grey,
+                    onTap: () => Navigator.pop(context, '__none__'),
+                    isDark: isDark,
+                  ),
+                if (vehicles.isNotEmpty) ...[
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Divider(color: isDark ? Colors.grey.shade700 : Colors.grey.shade300),
+                  ),
+                  ...vehicles.map((v) => _buildVehicleOption(
+                        context: context,
+                        icon: _vehicleIconMap[v.iconName] ?? Icons.directions_car,
+                        label: v.name,
+                        subtitle: Vehicle.fuelTypes[v.fuelType] ?? v.fuelType,
+                        color: const Color(0xFF2196F3),
+                        onTap: () => Navigator.pop(context, v.id),
+                        isDark: isDark,
+                      )),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildVehicleOption({
+    required BuildContext context,
+    required IconData icon,
+    required String label,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onTap,
+    required bool isDark,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: color, size: 22),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87)),
+                  Text(subtitle, style: TextStyle(fontSize: 12, color: isDark ? Colors.grey.shade400 : Colors.grey.shade600)),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right, color: isDark ? Colors.grey.shade600 : Colors.grey.shade400, size: 20),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _checkGoogleDriveStatus() async {
@@ -540,8 +755,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                       onTap: _exportCsv, iconColor: const Color(0xFF4CAF50), isFirst: true, isLoading: _isLoading),
                                     CustomCupertinoListTile(
                                       icon: Icons.file_download_outlined, title: 'Import from CSV', subtitle: 'Import fuel entries from a CSV file',
-                                      onTap: () => _showConfirmationDialog(title: 'Import CSV', message: 'Importing will add entries from the CSV file. Existing entries with the same ID will be updated.',
-                                        confirmText: 'Import', confirmColor: const Color(0xFF2196F3), onConfirm: _importCsv),
+                                      onTap: _importCsv,
                                       iconColor: const Color(0xFF2196F3), isLast: true, isLoading: _isLoading),
                                   ],
                                 ),
