@@ -5,6 +5,7 @@ import '../models/vehicle.dart';
 import '../services/fuel_storage_service.dart';
 import '../services/currency_service.dart';
 import '../services/vehicle_service.dart';
+import '../services/drive_backup_service.dart';
 import '../widgets/widgets.dart';
 
 class AddFuelScreen extends StatefulWidget {
@@ -197,6 +198,138 @@ class _AddFuelScreenState extends State<AddFuelScreen> with TickerProviderStateM
     super.dispose();
   }
 
+  Future<void> _showBackupPrompt() async {
+    final isSignedIn = await DriveBackupService.isSignedIn();
+    if (!mounted) return;
+
+    // Auto backup silently if enabled and signed in
+    if (isSignedIn && await DriveBackupService.isAutoBackupEnabled()) {
+      try {
+        await DriveBackupService.backupToDrive();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Row(children: [
+                Icon(Icons.cloud_done, color: Colors.white),
+                SizedBox(width: 12),
+                Text('Auto backup successful!'),
+              ]),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Auto backup failed: $e'), backgroundColor: Colors.red),
+          );
+        }
+      }
+      return;
+    }
+
+    await showDialog(
+      context: context,
+      builder: (ctx) {
+        bool isBackingUp = false;
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: Row(
+                children: [
+                  Icon(
+                    isSignedIn ? Icons.cloud_upload : Icons.cloud_outlined,
+                    color: isSignedIn ? Colors.green : const Color(0xFF4285F4),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(isSignedIn ? 'Backup Data' : 'Backup to Cloud'),
+                ],
+              ),
+              content: Text(
+                isSignedIn
+                    ? 'Would you like to backup your data to Google Drive?'
+                    : 'Connect your Gmail to backup your fuel data to Google Drive.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isBackingUp ? null : () => Navigator.pop(ctx),
+                  child: const Text('Not Now'),
+                ),
+                ElevatedButton(
+                  onPressed: isBackingUp
+                      ? null
+                      : () async {
+                          setDialogState(() => isBackingUp = true);
+                          try {
+                            if (isSignedIn) {
+                              await DriveBackupService.backupToDrive();
+                              if (ctx.mounted) {
+                                Navigator.pop(ctx);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: const Row(children: [
+                                      Icon(Icons.cloud_done, color: Colors.white),
+                                      SizedBox(width: 12),
+                                      Text('Backup successful!'),
+                                    ]),
+                                    backgroundColor: Colors.green,
+                                    behavior: SnackBarBehavior.floating,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                  ),
+                                );
+                              }
+                            } else {
+                              final account = await DriveBackupService.signIn();
+                              if (account != null) {
+                                await DriveBackupService.backupToDrive();
+                                if (ctx.mounted) {
+                                  Navigator.pop(ctx);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: const Row(children: [
+                                        Icon(Icons.cloud_done, color: Colors.white),
+                                        SizedBox(width: 12),
+                                        Text('Connected & backed up!'),
+                                      ]),
+                                      backgroundColor: Colors.green,
+                                      behavior: SnackBarBehavior.floating,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                    ),
+                                  );
+                                }
+                              } else {
+                                setDialogState(() => isBackingUp = false);
+                              }
+                            }
+                          } catch (e) {
+                            setDialogState(() => isBackingUp = false);
+                            if (ctx.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('${isSignedIn ? "Backup" : "Sign-in"} failed: $e'), backgroundColor: Colors.red),
+                              );
+                            }
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isSignedIn ? Colors.green : const Color(0xFF4285F4),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: isBackingUp
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : Text(isSignedIn ? 'Backup Now' : 'Connect Gmail'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   Future<void> _saveFuelEntry() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -246,7 +379,8 @@ class _AddFuelScreenState extends State<AddFuelScreen> with TickerProviderStateM
       }
 
       if (mounted) {
-        Navigator.pop(context);
+        await _showBackupPrompt();
+        if (mounted) Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {

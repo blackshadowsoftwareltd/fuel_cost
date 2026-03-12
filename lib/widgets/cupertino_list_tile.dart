@@ -81,12 +81,15 @@ class CustomCupertinoListTile extends StatelessWidget {
                   ],
                 ),
               ),
-              trailing ??
-                  Icon(
-                    CupertinoIcons.chevron_right,
-                    color: isDark ? Colors.grey.shade600 : Colors.grey.shade400,
-                    size: 16,
-                  ),
+              if (isLoading)
+                const CupertinoActivityIndicator(radius: 10)
+              else
+                trailing ??
+                    Icon(
+                      CupertinoIcons.chevron_right,
+                      color: isDark ? Colors.grey.shade600 : Colors.grey.shade400,
+                      size: 16,
+                    ),
             ],
           ),
         ),

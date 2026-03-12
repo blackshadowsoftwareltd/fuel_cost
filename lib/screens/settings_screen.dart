@@ -35,6 +35,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _isGoogleSignedIn = false;
   String? _googleEmail;
   DateTime? _lastBackupTime;
+  bool _autoBackupEnabled = false;
   double? _monthlyBudget;
 
   @override
@@ -508,13 +509,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Future<void> _checkGoogleDriveStatus() async {
     try {
       final isSignedIn = await DriveBackupService.isSignedIn();
+      final autoBackup = await DriveBackupService.isAutoBackupEnabled();
       DateTime? lastBackup;
       String? email;
       if (isSignedIn) {
         lastBackup = await DriveBackupService.getLastBackupTime();
         email = DriveBackupService.currentUser?.email;
       }
-      if (mounted) setState(() { _isGoogleSignedIn = isSignedIn; _lastBackupTime = lastBackup; _googleEmail = email; });
+      if (mounted) setState(() { _isGoogleSignedIn = isSignedIn; _lastBackupTime = lastBackup; _googleEmail = email; _autoBackupEnabled = autoBackup; });
     } catch (e) {
       debugPrint('Google Drive status check failed: $e');
     }
@@ -782,6 +784,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                     if (_isGoogleSignedIn) ...[
                                       CustomCupertinoListTile(icon: Icons.cloud_upload, title: 'Backup Now', subtitle: 'Upload your data to Google Drive',
                                         onTap: _backupToDrive, iconColor: const Color(0xFF4CAF50), isLoading: _isLoading),
+                                      CustomCupertinoListTile(
+                                        icon: Icons.backup,
+                                        title: 'Auto Backup',
+                                        subtitle: 'Automatically backup after saving an entry',
+                                        onTap: () async {
+                                          final newValue = !_autoBackupEnabled;
+                                          await DriveBackupService.setAutoBackup(newValue);
+                                          setState(() => _autoBackupEnabled = newValue);
+                                        },
+                                        iconColor: const Color(0xFF9C27B0),
+                                        trailing: CupertinoSwitch(
+                                          value: _autoBackupEnabled,
+                                          activeTrackColor: const Color(0xFF9C27B0),
+                                          onChanged: (value) async {
+                                            await DriveBackupService.setAutoBackup(value);
+                                            setState(() => _autoBackupEnabled = value);
+                                          },
+                                        ),
+                                      ),
                                       CustomCupertinoListTile(icon: Icons.cloud_download, title: 'Restore from Backup', subtitle: 'Download and restore your data',
                                         onTap: () => _showConfirmationDialog(title: 'Restore', message: 'This will replace all current data with the backup. This cannot be undone.',
                                           confirmText: 'Restore', confirmColor: Colors.orange, onConfirm: _restoreFromDrive),

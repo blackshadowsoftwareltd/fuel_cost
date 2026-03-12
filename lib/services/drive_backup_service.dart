@@ -12,6 +12,17 @@ class DriveBackupService {
   static const String _backupFileName = 'fuel_cost_backup.csv';
   static const String _lastBackupTimeKey = 'last_drive_backup_time';
   static const String _driveFileIdKey = 'drive_backup_file_id';
+  static const String _autoBackupKey = 'auto_backup_enabled';
+
+  static Future<bool> isAutoBackupEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_autoBackupKey) ?? false;
+  }
+
+  static Future<void> setAutoBackup(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_autoBackupKey, enabled);
+  }
 
   static final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: [drive.DriveApi.driveAppdataScope],
