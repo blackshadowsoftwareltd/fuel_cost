@@ -224,7 +224,7 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> with TickerProvid
     final colorScheme = theme.colorScheme;
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: theme.brightness == Brightness.dark ? const Color(0xFF121212) : Colors.grey[50],
       appBar: AppBar(
         title: AnimatedSwitcher(
           duration: const Duration(milliseconds: 250),
@@ -288,7 +288,7 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> with TickerProvid
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: theme.brightness == Brightness.dark ? const Color(0xFF1E1E1E) : Colors.white,
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
@@ -313,7 +313,7 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> with TickerProvid
                         const SizedBox(height: 20),
                         Text(
                           'Loading fuel data...',
-                          style: TextStyle(color: Colors.grey[700], fontSize: 16, fontWeight: FontWeight.w500),
+                          style: TextStyle(color: theme.brightness == Brightness.dark ? Colors.grey.shade300 : Colors.grey[700], fontSize: 16, fontWeight: FontWeight.w500),
                         ),
                         const SizedBox(height: 8),
                         Text(
@@ -491,10 +491,18 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> with TickerProvid
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
-            color: isSelected ? colorScheme.primary : Colors.white,
+            color: isSelected
+                ? colorScheme.primary
+                : Theme.of(context).brightness == Brightness.dark
+                    ? const Color(0xFF1E1E1E)
+                    : Colors.white,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: isSelected ? colorScheme.primary : Colors.grey.withValues(alpha: 0.3),
+              color: isSelected
+                  ? colorScheme.primary
+                  : Theme.of(context).brightness == Brightness.dark
+                      ? Colors.grey.shade700
+                      : Colors.grey.withValues(alpha: 0.3),
               width: 1.5,
             ),
             boxShadow: isSelected

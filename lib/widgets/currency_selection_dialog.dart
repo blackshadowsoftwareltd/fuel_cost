@@ -41,7 +41,7 @@ class _CurrencySelectionDialogState extends State<CurrencySelectionDialog> {
             child: const Icon(Icons.attach_money, color: Color(0xFF2196F3), size: 24),
           ),
           const SizedBox(width: 12),
-          const Text('Select Currency', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.black)),
+          const Text('Select Currency', style: TextStyle(fontWeight: FontWeight.w600)),
         ],
       ),
       content: SizedBox(
@@ -156,7 +156,7 @@ class _CurrencySelectionDialogState extends State<CurrencySelectionDialog> {
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
-                                    color: isSelected ? const Color(0xFF2196F3) : Colors.grey[600],
+                                    color: isSelected ? const Color(0xFF2196F3) : Theme.of(context).brightness == Brightness.dark ? Colors.grey[400] : Colors.grey[600],
                                   ),
                                 ),
                               ),
@@ -165,7 +165,7 @@ class _CurrencySelectionDialogState extends State<CurrencySelectionDialog> {
                               currencyName,
                               style: TextStyle(
                                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                                color: isSelected ? const Color(0xFF2196F3) : Colors.black87,
+                                color: isSelected ? const Color(0xFF2196F3) : Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87,
                               ),
                             ),
                             trailing: isSelected ? const Icon(Icons.check_circle, color: Color(0xFF2196F3)) : null,

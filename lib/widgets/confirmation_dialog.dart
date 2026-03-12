@@ -24,7 +24,7 @@ class ConfirmationDialog extends StatelessWidget {
         children: [
           Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
           const SizedBox(width: 12),
-          Text(title, style: const TextStyle(color: Colors.black)),
+          Text(title),
         ],
       ),
       content: Text(message),

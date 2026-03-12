@@ -289,7 +289,10 @@ class FuelEntryCard extends StatelessWidget {
               onLongPress: () {
                 _showBottomSheet(context);
               },
-              child: Container(
+              child: Builder(
+                builder: (context) {
+                  final isDark = Theme.of(context).brightness == Brightness.dark;
+                  return Container(
               margin: EdgeInsets.only(
                 left: MediaQuery.of(context).size.width < 400 ? 12 : 16,
                 right: MediaQuery.of(context).size.width < 400 ? 12 : 16,
@@ -301,7 +304,9 @@ class FuelEntryCard extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [Colors.white, Colors.grey[50]!],
+                  colors: isDark
+                      ? [const Color(0xFF1E1E1E), const Color(0xFF252525)]
+                      : [Colors.white, Colors.grey[50]!],
                 ),
                 boxShadow: [
                   BoxShadow(
@@ -317,7 +322,7 @@ class FuelEntryCard extends StatelessWidget {
                     spreadRadius: -10,
                   ),
                 ],
-                border: Border.all(color: Colors.grey.withValues(alpha: 0.1), width: 1),
+                border: Border.all(color: isDark ? Colors.grey.shade800 : Colors.grey.withValues(alpha: 0.1), width: 1),
               ),
               child: LayoutBuilder(
                 builder: (context, constraints) {
@@ -337,7 +342,9 @@ class FuelEntryCard extends StatelessWidget {
                   );
                 },
               ),
-            ),
+            );
+                },
+          ),
           ),
           ),
         );

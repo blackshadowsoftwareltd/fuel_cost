@@ -28,7 +28,7 @@ class HowToUseScreen extends StatelessWidget {
           gradient: LinearGradient(
             colors: [
               colorScheme.primary.withValues(alpha: 0.05),
-              Colors.white,
+              colorScheme.surface,
             ],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -252,11 +252,12 @@ class HowToUseScreen extends StatelessWidget {
     required String title,
     required Widget content,
   }) {
+    final isDark = colorScheme.brightness == Brightness.dark;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
@@ -265,6 +266,7 @@ class HowToUseScreen extends StatelessWidget {
             offset: const Offset(0, 4),
           ),
         ],
+        border: isDark ? Border.all(color: Colors.grey.shade800, width: 0.5) : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -304,47 +306,53 @@ class HowToUseScreen extends StatelessWidget {
   }
 
   Widget _buildStepItem(String number, String text, IconData icon) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: const BoxDecoration(
-              color: Color(0xFF2196F3),
-              shape: BoxShape.circle,
-            ),
-            child: Center(
-              child: Text(
-                number,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
+    return Builder(
+      builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF2196F3),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Text(
+                    number,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Icon(
-            icon,
-            color: const Color(0xFF2196F3),
-            size: 20,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(
-                fontSize: 16,
-                height: 1.4,
+              const SizedBox(width: 16),
+              Icon(
+                icon,
+                color: const Color(0xFF2196F3),
+                size: 20,
               ),
-            ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  text,
+                  style: TextStyle(
+                    fontSize: 16,
+                    height: 1.4,
+                    color: isDark ? Colors.grey.shade300 : Colors.black87,
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -387,35 +395,40 @@ class HowToUseScreen extends StatelessWidget {
   }
 
   Widget _buildCalculationStep(String label, String value, {bool isResult = false}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 140,
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: isResult ? FontWeight.bold : FontWeight.w500,
-                color: isResult ? const Color(0xFF2196F3) : Colors.grey[700],
+    return Builder(
+      builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 140,
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: isResult ? FontWeight.bold : FontWeight.w500,
+                    color: isResult ? const Color(0xFF2196F3) : (isDark ? Colors.grey[400] : Colors.grey[700]),
+                  ),
+                ),
               ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: isResult ? FontWeight.bold : FontWeight.normal,
-                color: isResult ? const Color(0xFF2196F3) : Colors.black87,
-                fontFamily: isResult ? null : 'monospace',
+              Expanded(
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: isResult ? FontWeight.bold : FontWeight.normal,
+                    color: isResult ? const Color(0xFF2196F3) : (isDark ? Colors.grey.shade300 : Colors.black87),
+                    fontFamily: isResult ? null : 'monospace',
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -444,9 +457,10 @@ class HowToUseScreen extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
+                    color: colorScheme.onSurface,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -467,27 +481,33 @@ class HowToUseScreen extends StatelessWidget {
   }
 
   Widget _buildTipItem(String emoji, String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            emoji,
-            style: const TextStyle(fontSize: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(
-                fontSize: 15,
-                height: 1.4,
+    return Builder(
+      builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                emoji,
+                style: const TextStyle(fontSize: 20),
               ),
-            ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  text,
+                  style: TextStyle(
+                    fontSize: 15,
+                    height: 1.4,
+                    color: isDark ? Colors.grey.shade300 : Colors.black87,
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

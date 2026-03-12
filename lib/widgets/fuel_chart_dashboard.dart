@@ -24,6 +24,9 @@ class _FuelChartDashboardState extends State<FuelChartDashboard> {
       return const SizedBox();
     }
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final titleColor = isDark ? Colors.grey.shade200 : Colors.grey.shade800;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -38,30 +41,30 @@ class _FuelChartDashboardState extends State<FuelChartDashboard> {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.analytics_rounded, color: Colors.grey.shade800, size: 20),
+                      Icon(Icons.analytics_rounded, color: titleColor, size: 20),
                       const SizedBox(width: 8),
                       Text(
                         'Analytics',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey.shade800),
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: titleColor),
                       ),
                     ],
                   ),
                   const SizedBox(height: 12),
-                  _buildChartTypeSelector(),
+                  _buildChartTypeSelector(isDark),
                 ],
               );
             }
 
             return Row(
               children: [
-                Icon(Icons.analytics_rounded, color: Colors.grey.shade800, size: 20),
+                Icon(Icons.analytics_rounded, color: titleColor, size: 20),
                 const SizedBox(width: 8),
                 Text(
                   'Analytics',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.grey.shade800),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: titleColor),
                 ),
                 const Spacer(),
-                _buildChartTypeSelector(),
+                _buildChartTypeSelector(isDark),
               ],
             );
           },
@@ -75,31 +78,32 @@ class _FuelChartDashboardState extends State<FuelChartDashboard> {
         const SizedBox(height: 8),
 
         // Quick stats row
-        _buildQuickStats(),
+        _buildQuickStats(isDark),
       ],
     );
   }
 
-  Widget _buildChartTypeSelector() {
+  Widget _buildChartTypeSelector(bool isDark) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.grey.shade100,
+        color: isDark ? Colors.grey.shade800 : Colors.grey.shade100,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.2), width: 0.5),
+        border: Border.all(color: isDark ? Colors.grey.shade700 : Colors.grey.withValues(alpha: 0.2), width: 0.5),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _buildSelectorButton('mileage', 'Efficiency', Icons.trending_up),
-          _buildSelectorButton('cost', 'Cost', Icons.attach_money),
-          _buildSelectorButton('liters', 'Volume', Icons.local_gas_station),
+          _buildSelectorButton('mileage', 'Efficiency', Icons.trending_up, isDark),
+          _buildSelectorButton('cost', 'Cost', Icons.attach_money, isDark),
+          _buildSelectorButton('liters', 'Volume', Icons.local_gas_station, isDark),
         ],
       ),
     );
   }
 
-  Widget _buildSelectorButton(String type, String label, IconData icon) {
+  Widget _buildSelectorButton(String type, String label, IconData icon, bool isDark) {
     final isSelected = _selectedChartType == type;
+    final unselectedColor = isDark ? Colors.grey.shade400 : Colors.grey.shade600;
 
     return Flexible(
       child: GestureDetector(
@@ -111,7 +115,7 @@ class _FuelChartDashboardState extends State<FuelChartDashboard> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(
-            color: isSelected ? Colors.white : Colors.transparent,
+            color: isSelected ? (isDark ? const Color(0xFF2A2A2A) : Colors.white) : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
             boxShadow: isSelected
                 ? [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8, offset: const Offset(0, 2))]
@@ -121,7 +125,7 @@ class _FuelChartDashboardState extends State<FuelChartDashboard> {
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 14, color: isSelected ? _getChartColor(type) : Colors.grey.shade600),
+              Icon(icon, size: 14, color: isSelected ? _getChartColor(type) : unselectedColor),
               const SizedBox(width: 4),
               Flexible(
                 child: Text(
@@ -129,7 +133,7 @@ class _FuelChartDashboardState extends State<FuelChartDashboard> {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                    color: isSelected ? Colors.black87 : Colors.grey.shade600,
+                    color: isSelected ? (isDark ? Colors.white : Colors.black87) : unselectedColor,
                   ),
                   overflow: TextOverflow.ellipsis,
                   maxLines: 1,
@@ -155,7 +159,7 @@ class _FuelChartDashboardState extends State<FuelChartDashboard> {
     }
   }
 
-  Widget _buildQuickStats() {
+  Widget _buildQuickStats(bool isDark) {
     if (widget.entries.length < 2) {
       return const SizedBox();
     }
@@ -215,7 +219,7 @@ class _FuelChartDashboardState extends State<FuelChartDashboard> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -225,7 +229,7 @@ class _FuelChartDashboardState extends State<FuelChartDashboard> {
             spreadRadius: -2,
           ),
         ],
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.1), width: 0.5),
+        border: Border.all(color: isDark ? Colors.grey.shade800 : Colors.grey.withValues(alpha: 0.1), width: 0.5),
       ),
       child: Row(
         children: [
@@ -238,7 +242,7 @@ class _FuelChartDashboardState extends State<FuelChartDashboard> {
           Expanded(
             child: Text(
               trendLabel,
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.grey.shade700),
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: isDark ? Colors.grey.shade300 : Colors.grey.shade700),
             ),
           ),
           Text(

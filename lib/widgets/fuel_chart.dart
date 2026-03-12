@@ -13,9 +13,10 @@ class FuelChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (entries.length < 2) {
-      return _buildNoDataWidget();
+      return _buildNoDataWidget(context);
     }
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     // Sort entries by date
     final sortedEntries = List<FuelEntry>.from(entries)..sort((a, b) => a.dateTime.compareTo(b.dateTime));
 
@@ -23,7 +24,7 @@ class FuelChart extends StatelessWidget {
       margin: const EdgeInsets.symmetric(vertical: 8),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
@@ -33,7 +34,7 @@ class FuelChart extends StatelessWidget {
             spreadRadius: -4,
           ),
         ],
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.1), width: 0.5),
+        border: Border.all(color: isDark ? Colors.grey.shade800 : Colors.grey.withValues(alpha: 0.1), width: 0.5),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -44,31 +45,32 @@ class FuelChart extends StatelessWidget {
             children: [
               Text(
                 _getChartTitle(),
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.black87),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.black87),
               ),
-              _buildChartTypeSelector(),
+              _buildChartTypeSelector(isDark),
             ],
           ),
           const SizedBox(height: 20),
 
           // Chart
-          SizedBox(height: 200, child: LineChart(_buildLineChartData(sortedEntries))),
+          SizedBox(height: 200, child: LineChart(_buildLineChartData(sortedEntries, isDark))),
 
           const SizedBox(height: 16),
 
           // Chart legend/info
-          _buildChartInfo(sortedEntries),
+          _buildChartInfo(sortedEntries, isDark),
         ],
       ),
     );
   }
 
-  Widget _buildNoDataWidget() {
+  Widget _buildNoDataWidget(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
@@ -78,7 +80,7 @@ class FuelChart extends StatelessWidget {
             spreadRadius: -4,
           ),
         ],
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.1), width: 0.5),
+        border: Border.all(color: isDark ? Colors.grey.shade800 : Colors.grey.withValues(alpha: 0.1), width: 0.5),
       ),
       child: Column(
         children: [
@@ -86,7 +88,7 @@ class FuelChart extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             'Not Enough Data',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.grey.shade700),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: isDark ? Colors.grey.shade300 : Colors.grey.shade700),
           ),
           const SizedBox(height: 4),
           Text('Add more fuel entries to see trends', style: TextStyle(fontSize: 14, color: Colors.grey.shade500)),
@@ -95,13 +97,13 @@ class FuelChart extends StatelessWidget {
     );
   }
 
-  Widget _buildChartTypeSelector() {
+  Widget _buildChartTypeSelector(bool isDark) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(color: isDark ? Colors.grey.shade800 : Colors.grey.shade100, borderRadius: BorderRadius.circular(12)),
       child: Text(
         _getChartTypeLabel(),
-        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.grey.shade600),
+        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: isDark ? Colors.grey.shade300 : Colors.grey.shade600),
       ),
     );
   }
@@ -132,7 +134,7 @@ class FuelChart extends StatelessWidget {
     }
   }
 
-  LineChartData _buildLineChartData(List<FuelEntry> sortedEntries) {
+  LineChartData _buildLineChartData(List<FuelEntry> sortedEntries, bool isDark) {
     final spots = <FlSpot>[];
 
     for (int i = 0; i < sortedEntries.length; i++) {
@@ -176,13 +178,16 @@ class FuelChart extends StatelessWidget {
     final yRange = maxY == minY ? (maxY == 0 ? 4.0 : maxY) : (maxY - minY);
     final yInterval = yRange / 4;
 
+    final axisLabelColor = isDark ? Colors.grey.shade400 : Colors.grey.shade600;
+    final gridLineColor = isDark ? Colors.grey.shade700.withValues(alpha: 0.5) : Colors.grey.withValues(alpha: 0.2);
+
     return LineChartData(
       gridData: FlGridData(
         show: true,
         drawVerticalLine: false,
         horizontalInterval: yInterval,
         getDrawingHorizontalLine: (value) {
-          return FlLine(color: Colors.grey.withValues(alpha: 0.2), strokeWidth: 1);
+          return FlLine(color: gridLineColor, strokeWidth: 1);
         },
       ),
       titlesData: FlTitlesData(
@@ -202,7 +207,7 @@ class FuelChart extends StatelessWidget {
                   meta: meta,
                   child: Text(
                     '${entry.dateTime.day}/${entry.dateTime.month}',
-                    style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.w400, fontSize: 10),
+                    style: TextStyle(color: axisLabelColor, fontWeight: FontWeight.w400, fontSize: 10),
                   ),
                 );
               }
@@ -217,14 +222,14 @@ class FuelChart extends StatelessWidget {
             getTitlesWidget: (double value, TitleMeta meta) {
               return Text(
                 _formatYAxisValue(value),
-                style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.w400, fontSize: 10),
+                style: TextStyle(color: axisLabelColor, fontWeight: FontWeight.w400, fontSize: 10),
               );
             },
             reservedSize: 40,
           ),
         ),
       ),
-      borderData: FlBorderData(show: true, border: Border.all(color: Colors.grey.withValues(alpha: 0.2))),
+      borderData: FlBorderData(show: true, border: Border.all(color: gridLineColor)),
       minX: 0,
       maxX: (sortedEntries.length - 1).toDouble(),
       minY: minY * 0.9,
@@ -239,7 +244,7 @@ class FuelChart extends StatelessWidget {
           dotData: FlDotData(
             show: true,
             getDotPainter: (spot, percent, barData, index) {
-              return FlDotCirclePainter(radius: 4, color: _getChartColor(), strokeWidth: 2, strokeColor: Colors.white);
+              return FlDotCirclePainter(radius: 4, color: _getChartColor(), strokeWidth: 2, strokeColor: isDark ? const Color(0xFF1E1E1E) : Colors.white);
             },
           ),
           belowBarData: BarAreaData(show: true, color: _getChartColor().withValues(alpha: 0.1)),
@@ -274,7 +279,7 @@ class FuelChart extends StatelessWidget {
     }
   }
 
-  Widget _buildChartInfo(List<FuelEntry> sortedEntries) {
+  Widget _buildChartInfo(List<FuelEntry> sortedEntries, bool isDark) {
     if (sortedEntries.isEmpty) return const SizedBox();
 
     double total = 0;
@@ -313,14 +318,15 @@ class FuelChart extends StatelessWidget {
           'Total',
           chartType == 'mileage' ? '${total.toStringAsFixed(0)} km' : '${total.toStringAsFixed(1)}$unit',
           _getChartColor(),
+          isDark,
         ),
-        _buildStatItem('Average', '${average.toStringAsFixed(1)}$unit', _getChartColor()),
-        _buildStatItem('Entries', '${sortedEntries.length}', _getChartColor()),
+        _buildStatItem('Average', '${average.toStringAsFixed(1)}$unit', _getChartColor(), isDark),
+        _buildStatItem('Entries', '${sortedEntries.length}', _getChartColor(), isDark),
       ],
     );
   }
 
-  Widget _buildStatItem(String label, String value, Color color) {
+  Widget _buildStatItem(String label, String value, Color color, bool isDark) {
     return Column(
       children: [
         Text(
@@ -328,7 +334,7 @@ class FuelChart extends StatelessWidget {
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: color),
         ),
         const SizedBox(height: 2),
-        Text(label, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+        Text(label, style: TextStyle(fontSize: 12, color: isDark ? Colors.grey.shade400 : Colors.grey.shade600)),
       ],
     );
   }
