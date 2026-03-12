@@ -42,8 +42,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
   late Animation<Offset> _slideAnimation;
   late Animation<double> _staggeredAnimation;
 
+  late AnimationController _summaryController;
+
   List<Vehicle> _vehicles = [];
   String? _selectedVehicleId;
+
+  // Cache previous values to avoid flicker during provider reload
+  double _lastTotalCost = 0.0;
+  double _lastTotalLiters = 0.0;
+  Map<String, double> _lastMileageCalcs = {};
+  String _lastCurrency = '';
 
   @override
   void initState() {
@@ -53,6 +61,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
     _fadeAnimationController = AnimationController(duration: const Duration(milliseconds: 800), vsync: this);
     _slideAnimationController = AnimationController(duration: const Duration(milliseconds: 600), vsync: this);
     _staggeredAnimationController = AnimationController(duration: const Duration(milliseconds: 1200), vsync: this);
+    _summaryController = AnimationController(value: 1.0, vsync: this);
 
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0)
         .animate(CurvedAnimation(parent: _fadeAnimationController, curve: Curves.easeInOut));
@@ -83,7 +92,40 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
     _fadeAnimationController.dispose();
     _slideAnimationController.dispose();
     _staggeredAnimationController.dispose();
+    _summaryController.dispose();
     super.dispose();
+  }
+
+  Future<void> _switchVehicle(String? id) async {
+    // Reset and replay stagger
+    _summaryController.value = 0.0;
+    setState(() => _selectedVehicleId = id);
+    ref.read(selectedVehicleIdProvider.notifier).state = id;
+    VehicleService.setSelectedVehicleId(id);
+    _summaryController.animateTo(1.0,
+      duration: const Duration(milliseconds: 800),
+      curve: Curves.linear,
+    );
+  }
+
+  /// Wraps a top-level section so it fades+slides in on its stagger slot.
+  Widget _staggerSection(int index, int total, Widget child) {
+    final start = index / (total + 1);
+    final end = ((index + 2) / (total + 1)).clamp(0.0, 1.0);
+    return AnimatedBuilder(
+      animation: _summaryController,
+      builder: (context, _) {
+        final t = Interval(start, end, curve: Curves.easeOut)
+            .transform(_summaryController.value);
+        return Opacity(
+          opacity: t,
+          child: Transform.translate(
+            offset: Offset(0, 16 * (1 - t)),
+            child: child,
+          ),
+        );
+      },
+    );
   }
 
   String _getButtonSubtitle(String title) {
@@ -139,6 +181,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
     final currencyAsync = ref.watch(currencyProvider);
     final authAsync = ref.watch(authenticationProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // Resolve with cached fallback to prevent flicker
+    final totalCost = totalCostAsync.valueOrNull ?? _lastTotalCost;
+    final totalLiters = totalLitersAsync.valueOrNull ?? _lastTotalLiters;
+    final mileageCalcs = mileageCalculationsAsync.valueOrNull ?? _lastMileageCalcs;
+    final currency = currencyAsync.valueOrNull ?? _lastCurrency;
+    if (totalCostAsync.hasValue) _lastTotalCost = totalCost;
+    if (totalLitersAsync.hasValue) _lastTotalLiters = totalLiters;
+    if (mileageCalculationsAsync.hasValue) _lastMileageCalcs = mileageCalcs;
+    if (currencyAsync.hasValue) _lastCurrency = currency;
 
     return Scaffold(
       body: Container(
@@ -299,10 +351,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                   const SizedBox(height: 6),
 
                   // Quick Stats Card
-                  StaggeredAnimationWrapper(
-                    index: 0,
-                    animation: _staggeredAnimation,
-                    child: entriesAsync.when(
+                  _staggerSection(0, 4, entriesAsync.when(
                       data: (entries) => currencyAsync.when(
                         data: (currency) {
                           if (entries.isEmpty) return const SizedBox();
@@ -349,218 +398,272 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                       ),
                       loading: () => const SizedBox(),
                       error: (_, __) => const SizedBox(),
-                    ),
-                  ),
+                    )),
 
                   // Summary Section
-                  StaggeredAnimationWrapper(
-                    index: 1,
-                    animation: _staggeredAnimation,
-                    child: Container(
-                      margin: EdgeInsets.symmetric(vertical: MediaQuery.of(context).size.width < 400 ? 8 : 10),
-                      decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 20, offset: const Offset(0, 8), spreadRadius: -4),
-                        ],
-                        border: Border.all(color: isDark ? Colors.grey.shade800 : Colors.grey.withValues(alpha: 0.1), width: 0.5),
-                      ),
-                      child: Padding(
-                        padding: EdgeInsets.all(MediaQuery.of(context).size.width < 400 ? 20 : 24),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF667eea).withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: const Color(0xFF667eea).withValues(alpha: 0.2), width: 1),
-                                  ),
-                                  child: const Icon(Icons.analytics_rounded, color: Color(0xFF667eea), size: 20),
-                                ),
-                                const SizedBox(width: 12),
-                                Text('Summary', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.grey.shade800)),
-                              ],
-                            ),
-                            const SizedBox(height: 20),
-                            totalCostAsync.when(
-                              data: (totalCost) => currencyAsync.when(
-                                data: (currency) => _buildSummaryLine(icon: Icons.payments_rounded, label: 'Total Cost', value: '$currency${totalCost.toStringAsFixed(2)}', color: const Color(0xFFE91E63)),
-                                loading: () => const CircularProgressIndicator(),
-                                error: (e, _) => Text('Error: $e'),
-                              ),
-                              loading: () => const CircularProgressIndicator(),
-                              error: (e, _) => Text('Error: $e'),
-                            ),
-                            const SizedBox(height: 16),
-                            totalLitersAsync.when(
-                              data: (totalLiters) => _buildSummaryLine(icon: Icons.local_gas_station_rounded, label: 'Total Liters', value: '${totalLiters.toStringAsFixed(1)}L', color: const Color(0xFF2196F3)),
-                              loading: () => const CircularProgressIndicator(),
-                              error: (e, _) => Text('Error: $e'),
-                            ),
-                            const SizedBox(height: 16),
-                            mileageCalculationsAsync.when(
-                              data: (calculations) => _buildSummaryLine(icon: Icons.route_rounded, label: 'Total Distance', value: calculations['totalDistance']! > 0 ? '${calculations['totalDistance']!.toStringAsFixed(0)} km' : 'N/A', color: const Color(0xFFFF9800)),
-                              loading: () => const CircularProgressIndicator(),
-                              error: (e, _) => Text('Error: $e'),
-                            ),
-                            const SizedBox(height: 16),
-                            mileageCalculationsAsync.when(
-                              data: (calculations) => _buildSummaryLine(icon: Icons.directions_car_rounded, label: 'Last Trip Mileage', value: calculations['lastTripMileage']! > 0 ? '${calculations['lastTripMileage']!.toStringAsFixed(1)} km/L' : 'N/A', color: const Color(0xFF4CAF50)),
-                              loading: () => const CircularProgressIndicator(),
-                              error: (e, _) => Text('Error: $e'),
-                            ),
-                            const SizedBox(height: 16),
-                            mileageCalculationsAsync.when(
-                              data: (calculations) => _buildSummaryLine(icon: Icons.trending_up_rounded, label: 'Overall Mileage', value: calculations['overallMileage']! > 0 ? '${calculations['overallMileage']!.toStringAsFixed(1)} km/L' : 'N/A', color: const Color(0xFF9C27B0)),
-                              loading: () => const CircularProgressIndicator(),
-                              error: (e, _) => Text('Error: $e'),
-                            ),
-                            const SizedBox(height: 16),
-                            mileageCalculationsAsync.when(
-                              data: (calculations) => _buildSummaryLine(icon: Icons.keyboard_double_arrow_up_rounded, label: 'Max Mileage', value: calculations['maxMileage']! > 0 ? '${calculations['maxMileage']!.toStringAsFixed(1)} km/L' : 'N/A', color: const Color(0xFF00C853)),
-                              loading: () => const CircularProgressIndicator(),
-                              error: (e, _) => Text('Error: $e'),
-                            ),
-                            const SizedBox(height: 16),
-                            mileageCalculationsAsync.when(
-                              data: (calculations) => _buildSummaryLine(icon: Icons.keyboard_double_arrow_down_rounded, label: 'Min Mileage', value: calculations['minMileage']! > 0 ? '${calculations['minMileage']!.toStringAsFixed(1)} km/L' : 'N/A', color: const Color(0xFFFF5722)),
-                              loading: () => const CircularProgressIndicator(),
-                              error: (e, _) => Text('Error: $e'),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                  _staggerSection(1, 4, _selectedVehicleId == null
+                      ? _buildOverallSummary(totalCost, totalLiters, mileageCalcs, currency, isDark)
+                      : _buildVehicleSummary(totalCost, totalLiters, mileageCalcs, currency, isDark),
                   ),
 
                   const SizedBox(height: 10),
 
                   // Analytics Dashboard Section
-                  StaggeredAnimationWrapper(
-                    index: 2,
-                    animation: _staggeredAnimation,
-                    child: entriesAsync.when(
-                      data: (entries) => currencyAsync.when(
-                        data: (currency) => FuelChartDashboard(entries: entries, currency: currency),
-                        loading: () => const CircularProgressIndicator(),
-                        error: (e, _) => Text('Error: $e'),
-                      ),
+                  _staggerSection(2, 4, entriesAsync.when(
+                    data: (entries) => currencyAsync.when(
+                      data: (currency) => FuelChartDashboard(entries: entries, currency: currency),
                       loading: () => const CircularProgressIndicator(),
                       error: (e, _) => Text('Error: $e'),
                     ),
-                  ),
+                    loading: () => const CircularProgressIndicator(),
+                    error: (e, _) => Text('Error: $e'),
+                  )),
 
                   const SizedBox(height: 16),
 
                   // Action Buttons
-                  StaggeredAnimationWrapper(
-                    index: 3,
-                    animation: _staggeredAnimation,
-                    child: Text('Quick Actions', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.grey.shade800)),
-                  ),
-                  const SizedBox(height: 12),
-
-                  StaggeredAnimationWrapper(
-                    index: 4,
-                    animation: _staggeredAnimation,
-                    child: ActionButton(
-                      icon: Icons.add_circle,
-                      title: 'Add Fuel Entry',
-                      subtitle: _getButtonSubtitle('Add Fuel Entry'),
-                      onPressed: () async {
-                        await Navigator.push(context, MaterialPageRoute(builder: (context) => const AddFuelScreen()));
-                        ref.invalidate(fuelEntriesProvider);
-                        ref.invalidate(syncStatusProvider);
-                      },
-                      color: const Color.fromARGB(255, 46, 161, 254),
-                      isPrimary: true,
-                    ),
-                  ),
-
-                  StaggeredAnimationWrapper(
-                    index: 5,
-                    animation: _staggeredAnimation,
-                    child: ActionButton(
-                      icon: Icons.history,
-                      title: 'View Fuel History',
-                      subtitle: _getButtonSubtitle('View Fuel History'),
-                      onPressed: () async {
-                        await Navigator.push(context, MaterialPageRoute(builder: (context) => const FuelHistoryScreen()));
-                        ref.invalidate(fuelEntriesProvider);
-                        ref.invalidate(syncStatusProvider);
-                      },
-                      color: const Color.fromARGB(255, 11, 141, 53),
-                    ),
-                  ),
-
-                  StaggeredAnimationWrapper(
-                    index: 6,
-                    animation: _staggeredAnimation,
-                    child: ActionButton(
-                      icon: Icons.calculate_rounded,
-                      title: 'Trip Cost Calculator',
-                      subtitle: 'Estimate fuel cost for a trip',
-                      onPressed: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (context) => const TripCalculatorScreen()));
-                      },
-                      color: const Color(0xFF9C27B0),
-                    ),
-                  ),
-
-                  StaggeredAnimationWrapper(
-                    index: 7,
-                    animation: _staggeredAnimation,
-                    child: ActionButton(
-                      icon: Icons.bar_chart_rounded,
-                      title: 'Budget & Reports',
-                      subtitle: 'Monthly spending & budget tracking',
-                      onPressed: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (context) => const BudgetReportScreen()));
-                      },
-                      color: const Color(0xFFFF9800),
-                    ),
-                  ),
-
-                  StaggeredAnimationWrapper(
-                    index: 8,
-                    animation: _staggeredAnimation,
-                    child: authAsync.when(
-                      data: (isAuthenticated) {
-                        final syncStatusAsync = ref.watch(syncStatusProvider);
-                        return syncStatusAsync.when(
-                          data: (lastSyncTime) => SyncButton(
-                            isSyncing: false,
-                            isAuthenticated: isAuthenticated,
-                            onPressed: () async => await AuthService.handleSync(context, ref),
-                            lastSyncTime: lastSyncTime,
-                          ),
-                          loading: () => SyncButton(
-                            isSyncing: true,
-                            isAuthenticated: isAuthenticated,
-                            onPressed: () async => await AuthService.handleSync(context, ref),
-                            lastSyncTime: null,
-                          ),
-                          error: (e, _) => SyncButton(
-                            isSyncing: false,
-                            isAuthenticated: isAuthenticated,
-                            onPressed: () async => await AuthService.handleSync(context, ref),
-                            lastSyncTime: null,
-                          ),
-                        );
-                      },
-                      loading: () => const CircularProgressIndicator(),
-                      error: (e, _) => Text('Error: $e'),
-                    ),
-                  ),
+                  _staggerSection(3, 4, Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text('Quick Actions', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.grey.shade800)),
+                      const SizedBox(height: 12),
+                      ActionButton(
+                        icon: Icons.add_circle,
+                        title: 'Add Fuel Entry',
+                        subtitle: _getButtonSubtitle('Add Fuel Entry'),
+                        onPressed: () async {
+                          await Navigator.push(context, MaterialPageRoute(builder: (context) => const AddFuelScreen()));
+                          ref.invalidate(fuelEntriesProvider);
+                          ref.invalidate(syncStatusProvider);
+                        },
+                        color: const Color.fromARGB(255, 46, 161, 254),
+                        isPrimary: true,
+                      ),
+                      ActionButton(
+                        icon: Icons.history,
+                        title: 'View Fuel History',
+                        subtitle: _getButtonSubtitle('View Fuel History'),
+                        onPressed: () async {
+                          await Navigator.push(context, MaterialPageRoute(builder: (context) => const FuelHistoryScreen()));
+                          ref.invalidate(fuelEntriesProvider);
+                          ref.invalidate(syncStatusProvider);
+                        },
+                        color: const Color.fromARGB(255, 11, 141, 53),
+                      ),
+                      ActionButton(
+                        icon: Icons.calculate_rounded,
+                        title: 'Trip Cost Calculator',
+                        subtitle: 'Estimate fuel cost for a trip',
+                        onPressed: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (context) => const TripCalculatorScreen()));
+                        },
+                        color: const Color(0xFF9C27B0),
+                      ),
+                      ActionButton(
+                        icon: Icons.bar_chart_rounded,
+                        title: 'Budget & Reports',
+                        subtitle: 'Monthly spending & budget tracking',
+                        onPressed: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (context) => const BudgetReportScreen()));
+                        },
+                        color: const Color(0xFFFF9800),
+                      ),
+                      authAsync.when(
+                        data: (isAuthenticated) {
+                          final syncStatusAsync = ref.watch(syncStatusProvider);
+                          return syncStatusAsync.when(
+                            data: (lastSyncTime) => SyncButton(
+                              isSyncing: false,
+                              isAuthenticated: isAuthenticated,
+                              onPressed: () async => await AuthService.handleSync(context, ref),
+                              lastSyncTime: lastSyncTime,
+                            ),
+                            loading: () => SyncButton(
+                              isSyncing: true,
+                              isAuthenticated: isAuthenticated,
+                              onPressed: () async => await AuthService.handleSync(context, ref),
+                              lastSyncTime: null,
+                            ),
+                            error: (e, _) => SyncButton(
+                              isSyncing: false,
+                              isAuthenticated: isAuthenticated,
+                              onPressed: () async => await AuthService.handleSync(context, ref),
+                              lastSyncTime: null,
+                            ),
+                          );
+                        },
+                        loading: () => const CircularProgressIndicator(),
+                        error: (e, _) => Text('Error: $e'),
+                      ),
+                    ],
+                  )),
                 ],
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOverallSummary(
+    double totalCost,
+    double totalLiters,
+    Map<String, double> mileageCalcs,
+    String currency,
+    bool isDark,
+  ) {
+    final totalDistance = mileageCalcs['totalDistance'] ?? 0.0;
+    return Container(
+      margin: EdgeInsets.symmetric(vertical: MediaQuery.of(context).size.width < 400 ? 8 : 10),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 20, offset: const Offset(0, 8), spreadRadius: -4),
+        ],
+        border: Border.all(color: isDark ? Colors.grey.shade800 : Colors.grey.withValues(alpha: 0.1), width: 0.5),
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(MediaQuery.of(context).size.width < 400 ? 16 : 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF667eea).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFF667eea).withValues(alpha: 0.2), width: 1),
+                  ),
+                  child: const Icon(Icons.analytics_rounded, color: Color(0xFF667eea), size: 20),
+                ),
+                const SizedBox(width: 12),
+                Text('Overall Summary', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.grey.shade800)),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(child: _buildOverallStatTile(
+                  icon: Icons.payments_rounded, label: 'Total Cost',
+                  value: '$currency${totalCost.toStringAsFixed(0)}',
+                  color: const Color(0xFFE91E63), isDark: isDark,
+                )),
+                const SizedBox(width: 10),
+                Expanded(child: _buildOverallStatTile(
+                  icon: Icons.local_gas_station_rounded, label: 'Total Fuels',
+                  value: '${totalLiters.toStringAsFixed(1)}L',
+                  color: const Color(0xFF2196F3), isDark: isDark,
+                )),
+                const SizedBox(width: 10),
+                Expanded(child: _buildOverallStatTile(
+                  icon: Icons.route_rounded, label: 'Total Distance',
+                  value: totalDistance > 0 ? '${totalDistance.toStringAsFixed(0)} km' : 'N/A',
+                  color: const Color(0xFFFF9800), isDark: isDark,
+                )),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOverallStatTile({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+    required bool isDark,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.2), width: 1),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 22),
+          const SizedBox(height: 8),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.grey.shade800),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: isDark ? Colors.grey.shade400 : Colors.grey.shade600),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVehicleSummary(
+    double totalCost,
+    double totalLiters,
+    Map<String, double> mileageCalcs,
+    String currency,
+    bool isDark,
+  ) {
+    final totalDistance = mileageCalcs['totalDistance'] ?? 0.0;
+    final lastTripMileage = mileageCalcs['lastTripMileage'] ?? 0.0;
+    final overallMileage = mileageCalcs['overallMileage'] ?? 0.0;
+    final maxMileage = mileageCalcs['maxMileage'] ?? 0.0;
+    final minMileage = mileageCalcs['minMileage'] ?? 0.0;
+    return Container(
+      margin: EdgeInsets.symmetric(vertical: MediaQuery.of(context).size.width < 400 ? 8 : 10),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 20, offset: const Offset(0, 8), spreadRadius: -4),
+        ],
+        border: Border.all(color: isDark ? Colors.grey.shade800 : Colors.grey.withValues(alpha: 0.1), width: 0.5),
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(MediaQuery.of(context).size.width < 400 ? 20 : 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF667eea).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFF667eea).withValues(alpha: 0.2), width: 1),
+                  ),
+                  child: const Icon(Icons.analytics_rounded, color: Color(0xFF667eea), size: 20),
+                ),
+                const SizedBox(width: 12),
+                Text('Summary', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.grey.shade800)),
+              ],
+            ),
+            const SizedBox(height: 20),
+            _buildSummaryLine(icon: Icons.payments_rounded, label: 'Total Cost', value: '$currency${totalCost.toStringAsFixed(2)}', color: const Color(0xFFE91E63)),
+            const SizedBox(height: 16),
+            _buildSummaryLine(icon: Icons.local_gas_station_rounded, label: 'Total Liters', value: '${totalLiters.toStringAsFixed(1)}L', color: const Color(0xFF2196F3)),
+            const SizedBox(height: 16),
+            _buildSummaryLine(icon: Icons.route_rounded, label: 'Total Distance', value: totalDistance > 0 ? '${totalDistance.toStringAsFixed(0)} km' : 'N/A', color: const Color(0xFFFF9800)),
+            const SizedBox(height: 16),
+            _buildSummaryLine(icon: Icons.directions_car_rounded, label: 'Last Trip Mileage', value: lastTripMileage > 0 ? '${lastTripMileage.toStringAsFixed(1)} km/L' : 'N/A', color: const Color(0xFF4CAF50)),
+            const SizedBox(height: 16),
+            _buildSummaryLine(icon: Icons.trending_up_rounded, label: 'Overall Mileage', value: overallMileage > 0 ? '${overallMileage.toStringAsFixed(1)} km/L' : 'N/A', color: const Color(0xFF9C27B0)),
+            const SizedBox(height: 16),
+            _buildSummaryLine(icon: Icons.keyboard_double_arrow_up_rounded, label: 'Max Mileage', value: maxMileage > 0 ? '${maxMileage.toStringAsFixed(1)} km/L' : 'N/A', color: const Color(0xFF00C853)),
+            const SizedBox(height: 16),
+            _buildSummaryLine(icon: Icons.keyboard_double_arrow_down_rounded, label: 'Min Mileage', value: minMileage > 0 ? '${minMileage.toStringAsFixed(1)} km/L' : 'N/A', color: const Color(0xFFFF5722)),
+          ],
         ),
       ),
     );
@@ -577,10 +680,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: GestureDetector(
-        onTap: () async {
-          setState(() => _selectedVehicleId = id);
-          await VehicleService.setSelectedVehicleId(id);
-          ref.read(selectedVehicleIdProvider.notifier).state = id;
+        onTap: () {
+          if (_selectedVehicleId == id) return;
+          _switchVehicle(id);
         },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),

@@ -14,7 +14,7 @@ class FuelStorageService {
   static Future<void> saveFuelEntry(FuelEntry entry) async {
     final isar = await DatabaseService.database;
     await isar.writeTxn(() async {
-      await isar.fuelEntrys.put(entry);
+      await isar.fuelEntrys.putById(entry);
     });
 
     if (entry.odometerReading != null) {
@@ -152,7 +152,7 @@ class FuelStorageService {
   static Future<void> updateFuelEntry(FuelEntry entry) async {
     final isar = await DatabaseService.database;
     await isar.writeTxn(() async {
-      await isar.fuelEntrys.put(entry);
+      await isar.fuelEntrys.putById(entry);
     });
   }
 
