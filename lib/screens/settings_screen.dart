@@ -8,7 +8,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:intl/intl.dart';
 import '../services/fuel_storage_service.dart';
-import '../services/auth_service.dart';
 import '../services/currency_service.dart';
 import '../services/drive_backup_service.dart';
 import '../services/budget_service.dart';
@@ -29,9 +28,7 @@ class SettingsScreen extends ConsumerStatefulWidget {
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   String? _loadingAction;
-  bool _isAuthenticated = false;
   String _selectedCurrency = '\$';
-  String? _userEmail;
   bool _isGoogleSignedIn = false;
   String? _googleEmail;
   DateTime? _lastBackupTime;
@@ -41,24 +38,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   void initState() {
     super.initState();
-    _checkAuthStatus();
     _loadCurrency();
     _checkGoogleDriveStatus();
     _loadBudget();
-  }
-
-  Future<void> _checkAuthStatus() async {
-    final isAuth = await AuthService.isAuthenticated();
-    String? email;
-    if (isAuth) {
-      email = await AuthService.getUserEmail();
-    }
-    if (mounted) {
-      setState(() {
-        _isAuthenticated = isAuth;
-        _userEmail = email;
-      });
-    }
   }
 
   Future<void> _loadCurrency() async {
@@ -590,16 +572,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   String _formatBackupTime(DateTime time) => DateFormat('MMM dd, yyyy HH:mm').format(time);
 
-  Future<void> _signOut() async {
-    await AuthService.signOut();
-    if (mounted) {
-      setState(() { _isAuthenticated = false; _userEmail = null; });
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: const Row(children: [Icon(Icons.check_circle, color: Colors.white), SizedBox(width: 12), Text('Signed out successfully')]),
-        backgroundColor: Colors.green, behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))));
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final themeState = ref.watch(themeProvider);
@@ -631,15 +603,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ),
                     const SizedBox(width: 16),
                     const Expanded(child: Text('Settings', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white))),
-                    if (_isAuthenticated)
-                      Container(
-                        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(12)),
-                        child: IconButton(
-                          icon: const Icon(Icons.logout, color: Colors.white),
-                          onPressed: () => _showConfirmationDialog(title: 'Sign Out', message: 'Are you sure you want to sign out?', confirmText: 'Sign Out', confirmColor: Colors.orange, onConfirm: _signOut),
-                          tooltip: 'Sign Out',
-                        ),
-                      ),
                   ],
                 ),
               ),
@@ -669,38 +632,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       children: [
                         Text('Settings', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
                         const SizedBox(height: 8),
-                        Text('Manage your account, preferences and data', style: TextStyle(fontSize: 16, color: isDark ? Colors.grey.shade400 : Colors.grey.shade600)),
+                        Text('Manage your preferences and data', style: TextStyle(fontSize: 16, color: isDark ? Colors.grey.shade400 : Colors.grey.shade600)),
                         const SizedBox(height: 24),
 
                         Expanded(
                           child: SingleChildScrollView(
                             child: Column(
                               children: [
-                                // Account Section
-                                Consumer(
-                                  builder: (context, state, __) {
-                                    return CupertinoSection(
-                                      title: 'Account',
-                                      children: [
-                                        CustomCupertinoListTile(
-                                          icon: _isAuthenticated ? CupertinoIcons.checkmark_shield : CupertinoIcons.person_circle,
-                                          title: _isAuthenticated ? 'Signed In' : 'Not Signed In',
-                                          subtitle: _isAuthenticated
-                                              ? (_userEmail != null && _userEmail!.isNotEmpty ? '$_userEmail\nYour data is being synced' : 'Your data is being synced')
-                                              : 'Sign in to sync your data across devices',
-                                          onTap: !_isAuthenticated ? () async => await AuthService.handleSync(context, state) : () {},
-                                          iconColor: _isAuthenticated ? Colors.green : Colors.orange,
-                                          isFirst: true, isLast: true,
-                                          trailing: !_isAuthenticated
-                                              ? Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), decoration: BoxDecoration(color: const Color(0xFF2196F3), borderRadius: BorderRadius.circular(16)),
-                                                  child: const Text('Sign In', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)))
-                                              : const Icon(CupertinoIcons.checkmark_circle_fill, color: Colors.green, size: 20),
-                                        ),
-                                      ],
-                                    );
-                                  },
-                                ),
-
                                 // Appearance Section
                                 CupertinoSection(
                                   title: 'Appearance',

@@ -36,7 +36,6 @@ dependencies:
   cupertino_icons: ^1.0.8
   shared_preferences: ^2.2.2
   intl: ^0.19.0
-  http: ^1.1.0
   fl_chart: ^0.71.0
   
   # Riverpod for state management

@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:isar/isar.dart';
 import '../models/fuel_entry.dart';
 import 'database_service.dart';
-import 'sync_service.dart';
 import 'vehicle_service.dart';
 
 class FuelStorageService {
@@ -204,7 +203,6 @@ class FuelStorageService {
     await isar.writeTxn(() async {
       await isar.fuelEntrys.clear();
     });
-    await SyncService.clearAllSyncTimes();
   }
 
   static Future<void> clearFuelEntries() async {
@@ -212,7 +210,6 @@ class FuelStorageService {
     await isar.writeTxn(() async {
       await isar.fuelEntrys.clear();
     });
-    await SyncService.clearAllSyncTimes();
   }
 
   static Future<void> clearCurrentOdometer() async {

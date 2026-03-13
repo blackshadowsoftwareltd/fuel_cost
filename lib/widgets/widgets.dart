@@ -3,7 +3,6 @@
 // Home Screen Widgets
 export 'stat_card.dart';
 export 'action_button.dart';
-export 'sync_button.dart';
 export 'staggered_animation_wrapper.dart';
 
 // Add Fuel Screen Widgets
@@ -17,7 +16,6 @@ export 'fuel_summary_stats.dart';
 export 'fuel_entry_card.dart';
 export 'delete_confirmation_dialog.dart';
 export 'empty_state_widget.dart';
-export 'sync_fab.dart';
 export 'fuel_chart.dart';
 export 'fuel_chart_dashboard.dart';
 

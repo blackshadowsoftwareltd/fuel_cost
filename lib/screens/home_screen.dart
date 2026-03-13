@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../services/auth_service.dart' show AuthService;
 import '../services/vehicle_service.dart';
 import '../services/budget_service.dart';
 import '../widgets/widgets.dart';
 import '../providers/fuel_entries_provider.dart';
-import '../providers/auth_provider.dart';
 import '../providers/summary_providers.dart';
-import '../providers/sync_provider.dart';
 import '../providers/vehicle_provider.dart';
 import '../models/vehicle.dart';
 import 'add_fuel_screen.dart';
@@ -182,7 +179,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
     final totalLitersAsync = ref.watch(filteredTotalLitersProvider);
     final mileageCalculationsAsync = ref.watch(filteredMileageCalculationsProvider);
     final currencyAsync = ref.watch(currencyProvider);
-    final authAsync = ref.watch(authenticationProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     // Resolve with cached fallback to prevent flicker
@@ -274,9 +270,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                                   onPressed: () async {
                                     await Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsScreen()));
                                     ref.invalidate(fuelEntriesProvider);
-                                    ref.invalidate(authenticationProvider);
                                     ref.invalidate(currencyProvider);
-                                    ref.invalidate(syncStatusProvider);
                                     ref.invalidate(vehiclesProvider);
                                     _loadVehicles();
                                   },
@@ -437,7 +431,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                         onPressed: () async {
                           await Navigator.push(context, MaterialPageRoute(builder: (context) => const AddFuelScreen()));
                           ref.invalidate(fuelEntriesProvider);
-                          ref.invalidate(syncStatusProvider);
                         },
                         color: const Color.fromARGB(255, 46, 161, 254),
                         isPrimary: true,
@@ -449,7 +442,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                         onPressed: () async {
                           await Navigator.push(context, MaterialPageRoute(builder: (context) => const FuelHistoryScreen()));
                           ref.invalidate(fuelEntriesProvider);
-                          ref.invalidate(syncStatusProvider);
                         },
                         color: const Color.fromARGB(255, 11, 141, 53),
                       ),
@@ -497,33 +489,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                           Navigator.push(context, MaterialPageRoute(builder: (context) => const VehicleComparisonScreen()));
                         },
                         color: const Color(0xFF795548),
-                      ),
-                      authAsync.when(
-                        data: (isAuthenticated) {
-                          final syncStatusAsync = ref.watch(syncStatusProvider);
-                          return syncStatusAsync.when(
-                            data: (lastSyncTime) => SyncButton(
-                              isSyncing: false,
-                              isAuthenticated: isAuthenticated,
-                              onPressed: () async => await AuthService.handleSync(context, ref),
-                              lastSyncTime: lastSyncTime,
-                            ),
-                            loading: () => SyncButton(
-                              isSyncing: true,
-                              isAuthenticated: isAuthenticated,
-                              onPressed: () async => await AuthService.handleSync(context, ref),
-                              lastSyncTime: null,
-                            ),
-                            error: (e, _) => SyncButton(
-                              isSyncing: false,
-                              isAuthenticated: isAuthenticated,
-                              onPressed: () async => await AuthService.handleSync(context, ref),
-                              lastSyncTime: null,
-                            ),
-                          );
-                        },
-                        loading: () => const CircularProgressIndicator(),
-                        error: (e, _) => Text('Error: $e'),
                       ),
                     ],
                   )),

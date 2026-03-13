@@ -3,8 +3,6 @@ import '../models/fuel_entry.dart';
 import '../models/vehicle.dart';
 import '../services/fuel_storage_service.dart';
 import '../services/vehicle_service.dart';
-// import '../services/auth_service.dart';
-// import '../services/sync_service.dart';
 import '../services/currency_service.dart';
 import '../widgets/widgets.dart';
 import 'add_fuel_screen.dart';
@@ -20,7 +18,6 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> with TickerProvid
   List<FuelEntry> _entries = [];
   List<FuelEntry> _filteredEntries = [];
   bool _isLoading = true;
-  bool _isSyncing = false;
   String _currency = '\$';
 
   List<Vehicle> _vehicles = [];
@@ -28,9 +25,7 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> with TickerProvid
   String? _selectedVehicleFilter; // null = "All"
   bool _showFilterInAppBar = false;
 
-  late AnimationController _syncAnimationController;
   late AnimationController _cardAnimationController;
-  late Animation<double> _syncRotation;
   late Animation<double> _cardSlideAnimation;
   final _scrollController = ScrollController();
   final _filterChipsKey = GlobalKey();
@@ -38,12 +33,7 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> with TickerProvid
   @override
   void initState() {
     super.initState();
-    _syncAnimationController = AnimationController(duration: const Duration(milliseconds: 1000), vsync: this);
     _cardAnimationController = AnimationController(duration: const Duration(milliseconds: 800), vsync: this);
-    _syncRotation = Tween<double>(
-      begin: 0,
-      end: 1,
-    ).animate(CurvedAnimation(parent: _syncAnimationController, curve: Curves.linear));
     _cardSlideAnimation = Tween<double>(
       begin: 0,
       end: 1,
@@ -55,7 +45,6 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> with TickerProvid
 
   @override
   void dispose() {
-    _syncAnimationController.dispose();
     _cardAnimationController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -274,11 +263,6 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> with TickerProvid
             ],
           ),
         ),
-      ),
-      floatingActionButton: SyncFAB(
-        isSyncing: _isSyncing,
-        onPressed: _syncData,
-        syncRotation: _syncRotation,
       ),
       body: _isLoading
           ? Center(
@@ -586,57 +570,4 @@ class _FuelHistoryScreenState extends State<FuelHistoryScreen> with TickerProvid
   }
 
 
-  Future<void> _syncData() async {
-    if (_isSyncing) return;
-
-    setState(() {
-      _isSyncing = true;
-    });
-
-    _syncAnimationController.repeat();
-
-    try {
-      // API calls commented out - just reload local data
-      await _loadData();
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 12),
-                Text('Data refreshed!'),
-              ],
-            ),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error, color: Colors.white),
-                const SizedBox(width: 12),
-                Expanded(child: Text('Sync failed: $e')),
-              ],
-            ),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-        );
-      }
-    } finally {
-      _syncAnimationController.stop();
-      setState(() {
-        _isSyncing = false;
-      });
-    }
-  }
 }
