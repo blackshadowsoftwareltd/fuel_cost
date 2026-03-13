@@ -17,6 +17,9 @@ import 'how_to_use_screen.dart';
 import 'trip_calculator_screen.dart';
 import 'budget_report_screen.dart';
 import 'vehicle_management_screen.dart';
+import 'maintenance_log_screen.dart';
+import 'spending_comparison_screen.dart';
+import 'vehicle_comparison_screen.dart';
 
 const Map<String, IconData> _vehicleIconMap = {
   'directions_car': Icons.directions_car,
@@ -467,6 +470,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                           Navigator.push(context, MaterialPageRoute(builder: (context) => const BudgetReportScreen()));
                         },
                         color: const Color(0xFFFF9800),
+                      ),
+                      ActionButton(
+                        icon: Icons.build_circle,
+                        title: 'Maintenance Log',
+                        subtitle: 'Track your vehicle services',
+                        onPressed: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (context) => const MaintenanceLogScreen()));
+                        },
+                        color: const Color(0xFF00BCD4),
+                      ),
+                      ActionButton(
+                        icon: Icons.compare_arrows,
+                        title: 'Spending Comparison',
+                        subtitle: 'Compare months side by side',
+                        onPressed: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (context) => const SpendingComparisonScreen()));
+                        },
+                        color: const Color(0xFF607D8B),
+                      ),
+                      ActionButton(
+                        icon: Icons.compare,
+                        title: 'Compare Vehicles',
+                        subtitle: 'Side-by-side efficiency analysis',
+                        onPressed: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (context) => const VehicleComparisonScreen()));
+                        },
+                        color: const Color(0xFF795548),
                       ),
                       authAsync.when(
                         data: (isAuthenticated) {
