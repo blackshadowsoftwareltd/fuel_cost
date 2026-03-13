@@ -515,6 +515,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           backgroundColor: Colors.green, behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))));
       }
     } catch (e) {
+      debugPrint('Google Sign-In error: $e');
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Google Sign-In failed: $e'), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating));
     } finally {
       if (mounted) setState(() => _loadingAction = null);

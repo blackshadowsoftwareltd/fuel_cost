@@ -7,7 +7,7 @@ class ThemeService {
 
   static Future<ThemeMode> getThemeMode() async {
     final prefs = await SharedPreferences.getInstance();
-    final mode = prefs.getString(_themeModeKey) ?? 'system';
+    final mode = prefs.getString(_themeModeKey) ?? 'light';
     switch (mode) {
       case 'light':
         return ThemeMode.light;

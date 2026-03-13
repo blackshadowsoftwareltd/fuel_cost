@@ -29,7 +29,7 @@ class ThemeState {
   final Color accentColor;
 
   ThemeState({
-    this.themeMode = ThemeMode.system,
+    this.themeMode = ThemeMode.light,
     this.accentColor = const Color(0xFF2196F3),
   });
 

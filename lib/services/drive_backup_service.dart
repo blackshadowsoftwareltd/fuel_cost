@@ -1,6 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
@@ -28,41 +26,17 @@ class DriveBackupService {
     scopes: [drive.DriveApi.driveAppdataScope],
   );
 
-  /// Check if Google Sign-In is properly configured on this platform
-  static Future<bool> _isConfigured() async {
-    if (Platform.isIOS) {
-      // Check if GIDClientID is set in Info.plist
-      try {
-        final plistData = await rootBundle.loadStructuredData<Map<String, dynamic>>(
-          'ios/GoogleService-Info.plist',
-          (value) async => <String, dynamic>{},
-        );
-        return plistData.isNotEmpty;
-      } catch (_) {
-        // Can't read plist from Dart; check by attempting sign-in silently
-        // The real check is done at native level
-        return true; // Let it proceed and catch errors
-      }
-    }
-    return true;
-  }
-
   // --- Sign-In ---
 
   static Future<GoogleSignInAccount?> signIn() async {
     try {
       return await _googleSignIn.signIn();
     } on PlatformException catch (e) {
-      if (e.message?.contains('GIDClientID') == true ||
-          e.code == 'sign_in_failed') {
-        throw Exception(
-          'Google Sign-In not configured. '
-          'Please set GIDClientID in Info.plist (iOS) or configure google-services.json (Android).',
-        );
-      }
-      rethrow;
+      // print works in release mode (visible via `adb logcat | grep flutter`)
+      print('Google Sign-In PlatformException: code=${e.code}, message=${e.message}, details=${e.details}');
+      throw Exception('Google Sign-In failed: ${e.message ?? e.code}');
     } catch (e) {
-      debugPrint('Google Sign-In error: $e');
+      print('Google Sign-In error: $e');
       rethrow;
     }
   }
@@ -79,7 +53,7 @@ class DriveBackupService {
       return _googleSignIn.currentUser != null ||
           await _googleSignIn.signInSilently() != null;
     } catch (e) {
-      debugPrint('Google Sign-In check failed: $e');
+      print('Google Sign-In check failed: $e');
       return false;
     }
   }
@@ -122,7 +96,7 @@ class DriveBackupService {
         );
       } catch (e) {
         // File might have been deleted, clear stored ID and create new
-        debugPrint('Update failed, creating new file: $e');
+        print('Update failed, creating new file: $e');
         await prefs.remove(_driveFileIdKey);
         await _createNewBackup(driveApi, media, prefs);
       }
@@ -205,7 +179,7 @@ class DriveBackupService {
         return fileList.files!.first.modifiedTime;
       }
     } catch (e) {
-      debugPrint('Failed to get remote backup time: $e');
+      print('Failed to get remote backup time: $e');
     }
     return null;
   }
