@@ -73,7 +73,7 @@ const FuelEntrySchema = CollectionSchema(
   getId: _fuelEntryGetId,
   getLinks: _fuelEntryGetLinks,
   attach: _fuelEntryAttach,
-  version: '3.1.0+1',
+  version: '3.3.0',
 );
 
 int _fuelEntryEstimateSize(

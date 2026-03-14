@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:isar/isar.dart';
+import 'package:isar_community/isar.dart';
 import '../models/fuel_entry.dart';
 import 'database_service.dart';
 import 'vehicle_service.dart';
