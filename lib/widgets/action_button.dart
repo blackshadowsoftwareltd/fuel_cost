@@ -23,22 +23,16 @@ class ActionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 4),
+      margin: const EdgeInsets.symmetric(vertical: 3),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-            spreadRadius: -4,
-          ),
-          BoxShadow(
-            color: color.withValues(alpha: 0.1),
-            blurRadius: 30,
-            offset: const Offset(0, 15),
-            spreadRadius: -8,
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+            spreadRadius: -2,
           ),
         ],
         border: Border.all(
@@ -49,20 +43,20 @@ class ActionButton extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           onTap: onPressed,
           splashColor: color.withValues(alpha: 0.1),
           highlightColor: color.withValues(alpha: 0.05),
           child: Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: Row(
               children: [
                 Container(
-                  width: 44,
-                  height: 44,
+                  width: 36,
+                  height: 36,
                   decoration: BoxDecoration(
                     color: color,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(10),
                     boxShadow: [
                       BoxShadow(
                         color: color.withValues(alpha: 0.3),
@@ -72,9 +66,9 @@ class ActionButton extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: Icon(icon, size: 22, color: Colors.white),
+                  child: Icon(icon, size: 18, color: Colors.white),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -82,7 +76,7 @@ class ActionButton extends StatelessWidget {
                       Text(
                         title,
                         style: TextStyle(
-                          fontSize: 17,
+                          fontSize: 14,
                           fontWeight: FontWeight.w600,
                           color: isDark ? Colors.white : Colors.black87,
                           letterSpacing: -0.2,
@@ -92,7 +86,7 @@ class ActionButton extends StatelessWidget {
                       Text(
                         subtitle,
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 12,
                           color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
                           fontWeight: FontWeight.w400,
                           letterSpacing: -0.1,

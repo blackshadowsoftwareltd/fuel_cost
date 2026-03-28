@@ -7,6 +7,7 @@ import '../services/currency_service.dart';
 import '../services/vehicle_service.dart';
 import '../services/drive_backup_service.dart';
 import '../widgets/widgets.dart';
+import 'vehicle_management_screen.dart';
 
 class AddFuelScreen extends StatefulWidget {
   final FuelEntry? existingEntry;
@@ -483,14 +484,39 @@ class _AddFuelScreenState extends State<AddFuelScreen> with TickerProviderStateM
                                 borderRadius: BorderRadius.circular(16),
                                 border: Border.all(color: Colors.redAccent, width: 1.5),
                               ),
-                              child: Row(
+                              child: Column(
                                 children: [
-                                  const Icon(Icons.warning_amber_rounded, color: Colors.orangeAccent, size: 20),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(
-                                      'No vehicles added. Add one in Settings > Vehicles.',
-                                      style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 13),
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.warning_amber_rounded, color: Colors.orangeAccent, size: 20),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          'No vehicles added. Please add a vehicle first.',
+                                          style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 13),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: TextButton.icon(
+                                      onPressed: () async {
+                                        await Navigator.push(
+                                          context,
+                                          MaterialPageRoute(builder: (context) => const VehicleManagementScreen()),
+                                        );
+                                        _loadVehicles();
+                                      },
+                                      icon: const Icon(Icons.add, size: 18),
+                                      label: const Text('Add Vehicle'),
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: Colors.white,
+                                        backgroundColor: Colors.white.withValues(alpha: 0.15),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                        padding: const EdgeInsets.symmetric(vertical: 10),
+                                      ),
                                     ),
                                   ),
                                 ],

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
@@ -26,18 +27,52 @@ class DriveBackupService {
     scopes: [drive.DriveApi.driveAppdataScope],
   );
 
+  // --- Connectivity Check ---
+
+  static Future<bool> _hasInternet() async {
+    try {
+      final result = await InternetAddress.lookup('google.com')
+          .timeout(const Duration(seconds: 5));
+      return result.isNotEmpty && result.first.rawAddress.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static String _friendlySignInError(dynamic e) {
+    final msg = e.toString();
+    // Parse ApiException error codes
+    if (msg.contains('ApiException: 7') || msg.contains('NETWORK_ERROR')) {
+      return 'No internet connection. Check your connection and try again.';
+    } else if (msg.contains('ApiException: 10') || msg.contains('DEVELOPER_ERROR')) {
+      return 'Google Sign-In configuration error. Please update the app.';
+    } else if (msg.contains('ApiException: 12501') || msg.contains('SIGN_IN_CANCELLED')) {
+      return 'Sign-in cancelled.';
+    } else if (msg.contains('ApiException: 12500') || msg.contains('SIGN_IN_FAILED')) {
+      return 'Google Sign-In failed. Please try again.';
+    } else if (msg.contains('ApiException: 4')) {
+      return 'Google Sign-In required. Please try again.';
+    } else if (msg.contains('network') || msg.contains('Network')) {
+      return 'Network error. Check your internet connection.';
+    }
+    return 'Google Sign-In failed. Please try again.';
+  }
+
   // --- Sign-In ---
 
   static Future<GoogleSignInAccount?> signIn() async {
+    final hasInternet = await _hasInternet();
+    if (!hasInternet) {
+      throw Exception('No internet connection. Check your connection and try again.');
+    }
     try {
       return await _googleSignIn.signIn();
     } on PlatformException catch (e) {
-      // print works in release mode (visible via `adb logcat | grep flutter`)
       print('Google Sign-In PlatformException: code=${e.code}, message=${e.message}, details=${e.details}');
-      throw Exception('Google Sign-In failed: ${e.message ?? e.code}');
+      throw Exception(_friendlySignInError(e.message ?? e.code));
     } catch (e) {
       print('Google Sign-In error: $e');
-      rethrow;
+      throw Exception(_friendlySignInError(e));
     }
   }
 

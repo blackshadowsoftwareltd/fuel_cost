@@ -178,6 +178,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
 
   @override
   Widget build(BuildContext context) {
+    final vehiclesAsync = ref.watch(vehiclesProvider);
+    final hasVehicles = vehiclesAsync.valueOrNull?.isNotEmpty ?? false;
     final entriesAsync = ref.watch(vehicleFilteredEntriesProvider);
     final totalCostAsync = ref.watch(filteredTotalCostProvider);
     final totalLitersAsync = ref.watch(filteredTotalLitersProvider);
@@ -196,6 +198,94 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
     if (currencyAsync.hasValue) _lastCurrency = currency;
 
     return Scaffold(
+      floatingActionButton: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          gradient: LinearGradient(
+            colors: isDark
+                ? [const Color(0xFF3D8BFF), const Color(0xFF2563EB), const Color(0xFF1D4ED8)]
+                : [const Color(0xFF38BDF8), const Color(0xFF2EA1FE), const Color(0xFF1565C0)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.15),
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF2EA1FE).withValues(alpha: 0.55),
+              blurRadius: 22,
+              offset: const Offset(0, 8),
+              spreadRadius: -2,
+            ),
+            BoxShadow(
+              color: const Color(0xFF1565C0).withValues(alpha: 0.4),
+              blurRadius: 36,
+              offset: const Offset(0, 16),
+              spreadRadius: -6,
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(24),
+            splashColor: Colors.white.withValues(alpha: 0.25),
+            highlightColor: Colors.white.withValues(alpha: 0.08),
+            onTap: () async {
+              await Navigator.push(context, MaterialPageRoute(builder: (context) => const AddFuelScreen()));
+              ref.invalidate(fuelEntriesProvider);
+            },
+            child: Padding(
+              padding: const EdgeInsets.only(left: 6, right: 16, top: 6, bottom: 6),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Fuel pump icon with glowing circle
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.white.withValues(alpha: 0.25),
+                          Colors.white.withValues(alpha: 0.08),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        width: 1.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.white.withValues(alpha: 0.1),
+                          blurRadius: 12,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
+                    child: const Icon(Icons.local_gas_station_rounded, size: 22, color: Colors.white),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Add Fuel Entry',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -212,7 +302,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
         ),
         child: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.only(bottom: 50.0),
+            padding: const EdgeInsets.only(bottom: 70.0),
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -351,20 +441,40 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                               _loadVehicles();
                             },
                             child: Container(
-                              width: 32,
                               height: 32,
+                              padding: EdgeInsets.symmetric(horizontal: hasVehicles ? 0 : 12),
+                              constraints: BoxConstraints(minWidth: 32),
                               decoration: BoxDecoration(
-                                color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                                color: hasVehicles
+                                    ? (isDark ? const Color(0xFF1E1E1E) : Colors.white)
+                                    : const Color.fromARGB(255, 46, 161, 254),
                                 borderRadius: BorderRadius.circular(14),
                                 border: Border.all(
-                                  color: isDark ? Colors.grey.shade700 : Colors.grey.withValues(alpha: 0.3),
+                                  color: hasVehicles
+                                      ? (isDark ? Colors.grey.shade700 : Colors.grey.withValues(alpha: 0.3))
+                                      : Colors.transparent,
                                   width: 1,
                                 ),
                               ),
-                              child: Icon(
-                                _vehicles.isEmpty ? Icons.add_rounded : Icons.tune_rounded,
-                                color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
-                                size: 15,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    hasVehicles ? Icons.tune_rounded : Icons.add_rounded,
+                                    color: hasVehicles
+                                        ? (isDark ? Colors.grey.shade400 : Colors.grey.shade600)
+                                        : Colors.white,
+                                    size: 15,
+                                  ),
+                                  if (!hasVehicles) ...[
+                                    const SizedBox(width: 4),
+                                    const Text(
+                                      'Add Vehicle',
+                                      style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                                    ),
+                                  ],
+                                ],
                               ),
                             ),
                           ),
@@ -375,100 +485,102 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
 
                   const SizedBox(height: 6),
 
-                  // Quick Stats Card
-                  _staggerSection(
-                    0,
-                    4,
-                    entriesAsync.when(
-                      data: (entries) => currencyAsync.when(
-                        data: (currency) {
-                          if (entries.isEmpty) return const SizedBox();
-                          final now = DateTime.now();
-                          final thisMonthSpent = BudgetService.getMonthlySpending(entries, now.year, now.month);
-                          final daysSinceLastFill = entries.isNotEmpty
-                              ? now.difference(entries.last.dateTime).inDays
-                              : 0;
-                          final lastCost = entries.isNotEmpty ? entries.last.totalCost : 0.0;
+                  if (hasVehicles) ...[
+                    // Quick Stats Card
+                    _staggerSection(
+                      0,
+                      4,
+                      entriesAsync.when(
+                        data: (entries) => currencyAsync.when(
+                          data: (currency) {
+                            if (entries.isEmpty) return const SizedBox();
+                            final now = DateTime.now();
+                            final thisMonthSpent = BudgetService.getMonthlySpending(entries, now.year, now.month);
+                            final daysSinceLastFill = entries.isNotEmpty
+                                ? now.difference(entries.last.dateTime).inDays
+                                : 0;
+                            final lastCost = entries.isNotEmpty ? entries.last.totalCost : 0.0;
 
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 10),
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: isDark
-                                    ? [
-                                        const Color(0xFF667eea).withValues(alpha: 0.3),
-                                        const Color(0xFF764ba2).withValues(alpha: 0.3),
-                                      ]
-                                    : [const Color(0xFF667eea), const Color(0xFF764ba2)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 10),
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: isDark
+                                      ? [
+                                          const Color(0xFF667eea).withValues(alpha: 0.3),
+                                          const Color(0xFF764ba2).withValues(alpha: 0.3),
+                                        ]
+                                      : [const Color(0xFF667eea), const Color(0xFF764ba2)],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFF667eea).withValues(alpha: 0.3),
+                                    blurRadius: 15,
+                                    offset: const Offset(0, 8),
+                                  ),
+                                ],
                               ),
-                              borderRadius: BorderRadius.circular(20),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(0xFF667eea).withValues(alpha: 0.3),
-                                  blurRadius: 15,
-                                  offset: const Offset(0, 8),
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: _buildQuickStat(
-                                    'This Month',
-                                    '$currency${thisMonthSpent.toStringAsFixed(0)}',
-                                    Icons.calendar_month,
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: _buildQuickStat(
+                                      'This Month',
+                                      '$currency${thisMonthSpent.toStringAsFixed(0)}',
+                                      Icons.calendar_month,
+                                    ),
                                   ),
-                                ),
-                                Container(width: 1, height: 40, color: Colors.white.withValues(alpha: 0.3)),
-                                Expanded(
-                                  child: _buildQuickStat(
-                                    'Last Fill',
-                                    '$currency${lastCost.toStringAsFixed(0)}',
-                                    Icons.local_gas_station,
+                                  Container(width: 1, height: 40, color: Colors.white.withValues(alpha: 0.3)),
+                                  Expanded(
+                                    child: _buildQuickStat(
+                                      'Last Fill',
+                                      '$currency${lastCost.toStringAsFixed(0)}',
+                                      Icons.local_gas_station,
+                                    ),
                                   ),
-                                ),
-                                Container(width: 1, height: 40, color: Colors.white.withValues(alpha: 0.3)),
-                                Expanded(child: _buildQuickStat('Days Ago', '$daysSinceLastFill', Icons.schedule)),
-                              ],
-                            ),
-                          );
-                        },
+                                  Container(width: 1, height: 40, color: Colors.white.withValues(alpha: 0.3)),
+                                  Expanded(child: _buildQuickStat('Days Ago', '$daysSinceLastFill', Icons.schedule)),
+                                ],
+                              ),
+                            );
+                          },
+                          loading: () => const SizedBox(),
+                          error: (_, __) => const SizedBox(),
+                        ),
                         loading: () => const SizedBox(),
                         error: (_, __) => const SizedBox(),
                       ),
-                      loading: () => const SizedBox(),
-                      error: (_, __) => const SizedBox(),
                     ),
-                  ),
 
-                  // Summary Section
-                  _staggerSection(
-                    1,
-                    4,
-                    _selectedVehicleId == null
-                        ? _buildOverallSummary(totalCost, totalLiters, mileageCalcs, currency, isDark)
-                        : _buildVehicleSummary(totalCost, totalLiters, mileageCalcs, currency, isDark),
-                  ),
+                    // Summary Section
+                    _staggerSection(
+                      1,
+                      4,
+                      _selectedVehicleId == null
+                          ? _buildOverallSummary(totalCost, totalLiters, mileageCalcs, currency, isDark)
+                          : _buildVehicleSummary(totalCost, totalLiters, mileageCalcs, currency, isDark),
+                    ),
 
-                  const SizedBox(height: 10),
+                    const SizedBox(height: 10),
 
-                  // Analytics Dashboard Section
-                  _staggerSection(
-                    2,
-                    4,
-                    entriesAsync.when(
-                      data: (entries) => currencyAsync.when(
-                        data: (currency) => FuelChartDashboard(entries: entries, currency: currency),
+                    // Analytics Dashboard Section
+                    _staggerSection(
+                      2,
+                      4,
+                      entriesAsync.when(
+                        data: (entries) => currencyAsync.when(
+                          data: (currency) => FuelChartDashboard(entries: entries, currency: currency),
+                          loading: () => const CircularProgressIndicator(),
+                          error: (e, _) => Text('Error: $e'),
+                        ),
                         loading: () => const CircularProgressIndicator(),
                         error: (e, _) => Text('Error: $e'),
                       ),
-                      loading: () => const CircularProgressIndicator(),
-                      error: (e, _) => Text('Error: $e'),
                     ),
-                  ),
+                  ],
 
                   const SizedBox(height: 16),
 
@@ -488,20 +600,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                           ),
                         ),
                         const SizedBox(height: 12),
-                        ActionButton(
-                          icon: Icons.add_circle,
-                          title: 'Add Fuel Entry',
-                          subtitle: _getButtonSubtitle('Add Fuel Entry'),
-                          onPressed: () async {
-                            await Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => const AddFuelScreen()),
-                            );
-                            ref.invalidate(fuelEntriesProvider);
-                          },
-                          color: const Color.fromARGB(255, 46, 161, 254),
-                          isPrimary: true,
-                        ),
                         ActionButton(
                           icon: Icons.history,
                           title: 'View Fuel History',
