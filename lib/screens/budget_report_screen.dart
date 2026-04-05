@@ -277,15 +277,25 @@ class _BudgetReportScreenState extends ConsumerState<BudgetReportScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                '$_currency${spending.toStringAsFixed(0)} spent',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: isDark ? Colors.grey.shade300 : Colors.grey.shade700),
+              Flexible(
+                child: Text(
+                  '$_currency${spending.toStringAsFixed(0)} spent',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: isDark ? Colors.grey.shade300 : Colors.grey.shade700),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
               ),
-              Text(
-                isOver
-                    ? '$_currency${(-remaining).toStringAsFixed(0)} over budget'
-                    : '$_currency${remaining.toStringAsFixed(0)} remaining',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: progressColor),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  isOver
+                      ? '$_currency${(-remaining).toStringAsFixed(0)} over budget'
+                      : '$_currency${remaining.toStringAsFixed(0)} remaining',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: progressColor),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                  textAlign: TextAlign.end,
+                ),
               ),
             ],
           ),
@@ -293,6 +303,8 @@ class _BudgetReportScreenState extends ConsumerState<BudgetReportScreen>
           Text(
             'Budget: $_currency${_monthlyBudget!.toStringAsFixed(0)}  |  ${(progress * 100).toStringAsFixed(0)}% used',
             style: TextStyle(fontSize: 12, color: isDark ? Colors.grey.shade500 : Colors.grey.shade500),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
           ),
         ],
       ),

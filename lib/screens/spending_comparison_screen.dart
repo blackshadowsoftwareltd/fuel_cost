@@ -330,25 +330,22 @@ class _SpendingComparisonScreenState
   }
 
   Widget _buildPeriodSelectors(bool isDark) {
-    return Column(
-      children: [
-        Row(
-          children: [
-            for (int i = 0; i < 4; i++) ...[
-              if (i > 0) const SizedBox(width: 8),
-              Expanded(
-                child: _buildPeriodCard(
-                  label: _labelForPeriod(i),
-                  month: _getMonth(i),
-                  color: _colorForPeriod(i),
-                  isDark: isDark,
-                  onTap: () => _showMonthPicker(period: i),
-                ),
-              ),
-            ],
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (int i = 0; i < 4; i++) ...[
+            if (i > 0) const SizedBox(width: 8),
+            _buildPeriodCard(
+              label: _labelForPeriod(i),
+              month: _getMonth(i),
+              color: _colorForPeriod(i),
+              isDark: isDark,
+              onTap: () => _showMonthPicker(period: i),
+            ),
           ],
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -385,6 +382,8 @@ class _SpendingComparisonScreenState
               ),
               child: Text(
                 label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -395,6 +394,8 @@ class _SpendingComparisonScreenState
             const SizedBox(height: 10),
             Text(
               DateFormat('MMM yyyy').format(month),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
@@ -540,6 +541,8 @@ class _SpendingComparisonScreenState
                     fontWeight: FontWeight.w600,
                     color: _colorForPeriod(i),
                   ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
               ),
               Expanded(
@@ -625,6 +628,8 @@ class _SpendingComparisonScreenState
                               fontWeight: FontWeight.w600,
                               color: _colorForPeriod(i),
                             ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
                           ),
                         ),
                     ],

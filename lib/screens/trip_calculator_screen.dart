@@ -54,22 +54,27 @@ class _TripCalculatorScreenState extends ConsumerState<TripCalculatorScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: isDark
-                ? [const Color(0xFF1a1a2e), const Color(0xFF16213e), const Color(0xFF0f3460)]
-                : [const Color(0xFF667eea), const Color(0xFF764ba2), const Color(0xFF2196F3)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: isDark
+                      ? [const Color(0xFF1a1a2e), const Color(0xFF16213e), const Color(0xFF0f3460)]
+                      : [const Color(0xFF667eea), const Color(0xFF764ba2), const Color(0xFF2196F3)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+            ),
           ),
-        ),
-        child: SafeArea(
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
+          SafeArea(
+            child: FadeTransition(
+              opacity: _fadeAnimation,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Header
@@ -240,6 +245,7 @@ class _TripCalculatorScreenState extends ConsumerState<TripCalculatorScreen>
             ),
           ),
         ),
+        ],
       ),
     );
   }
@@ -359,12 +365,15 @@ class _TripCalculatorScreenState extends ConsumerState<TripCalculatorScreen>
           Center(
             child: Column(
               children: [
-                Text(
-                  '$_currency${estimatedCost.toStringAsFixed(2)}',
-                  style: TextStyle(
-                    fontSize: 42,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : const Color(0xFF667eea),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    '$_currency${estimatedCost.toStringAsFixed(2)}',
+                    style: TextStyle(
+                      fontSize: 42,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : const Color(0xFF667eea),
+                    ),
                   ),
                 ),
                 Text(
@@ -410,6 +419,8 @@ class _TripCalculatorScreenState extends ConsumerState<TripCalculatorScreen>
                       Text(
                         '$_currency${(estimatedCost * 2).toStringAsFixed(2)} for ${(distance * 2).toStringAsFixed(0)} km',
                         style: TextStyle(fontSize: 13, color: isDark ? Colors.grey.shade400 : Colors.grey.shade600),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
                       ),
                     ],
                   ),

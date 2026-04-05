@@ -676,6 +676,7 @@ class _VehicleComparisonScreenState
               color: color,
             ),
             overflow: TextOverflow.ellipsis,
+            maxLines: 1,
           ),
         );
       }).toList();
@@ -718,6 +719,7 @@ class _VehicleComparisonScreenState
               color: isDark ? Colors.white : Colors.grey.shade800,
             ),
             overflow: TextOverflow.ellipsis,
+            maxLines: 1,
           ),
         );
       }).toList();

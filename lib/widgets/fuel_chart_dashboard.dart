@@ -248,6 +248,8 @@ class _FuelChartDashboardState extends State<FuelChartDashboard> {
           Text(
             trendValue,
             style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: trendColor),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
           ),
         ],
       ),

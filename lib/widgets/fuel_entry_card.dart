@@ -70,6 +70,7 @@ class FuelEntryCard extends StatelessWidget {
                         '${entry.liters.toStringAsFixed(2)} Liters',
                         style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: colorScheme.onSurface),
                         overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -82,6 +83,8 @@ class FuelEntryCard extends StatelessWidget {
                       child: Text(
                         '$currency${entry.totalCost.toStringAsFixed(2)}',
                         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
                       ),
                     ),
                   ],
@@ -118,6 +121,7 @@ class FuelEntryCard extends StatelessWidget {
                           color: colorScheme.onSurface.withValues(alpha: 0.8),
                         ),
                         overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
                       ),
                     ),
                   ],
@@ -128,12 +132,16 @@ class FuelEntryCard extends StatelessWidget {
                     children: [
                       Icon(Icons.speed_rounded, size: 16, color: colorScheme.onSurface.withValues(alpha: 0.6)),
                       const SizedBox(width: 6),
-                      Text(
-                        'Odometer: ${entry.odometerReading!.toStringAsFixed(0)} km',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: colorScheme.onSurface.withValues(alpha: 0.8),
+                      Expanded(
+                        child: Text(
+                          'Odometer: ${entry.odometerReading!.toStringAsFixed(0)} km',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: colorScheme.onSurface.withValues(alpha: 0.8),
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
                         ),
                       ),
                     ],
@@ -178,19 +186,26 @@ class FuelEntryCard extends StatelessWidget {
                         Text(
                           '${entry.liters.toStringAsFixed(2)}L',
                           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: colorScheme.onSurface),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
                         ),
                         Text(
                           vehicleName!,
                           style: TextStyle(fontSize: 11, color: colorScheme.onSurface.withValues(alpha: 0.5)),
                           overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
                         ),
                       ],
                     ),
                   ),
                 ] else
-                  Text(
-                    '${entry.liters.toStringAsFixed(2)}L',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: colorScheme.onSurface),
+                  Flexible(
+                    child: Text(
+                      '${entry.liters.toStringAsFixed(2)}L',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: colorScheme.onSurface),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
                   ),
               ],
             ),
@@ -204,6 +219,8 @@ class FuelEntryCard extends StatelessWidget {
             child: Text(
               '$currency${entry.totalCost.toStringAsFixed(2)}',
               style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.green),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
           ),
         ],
@@ -233,12 +250,16 @@ class FuelEntryCard extends StatelessWidget {
             children: [
               Icon(Icons.attach_money_rounded, size: 14, color: colorScheme.onSurface.withValues(alpha: 0.6)),
               const SizedBox(width: 6),
-              Text(
-                '$currency${entry.pricePerLiter.toStringAsFixed(2)} per liter',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: colorScheme.onSurface.withValues(alpha: 0.8),
+              Expanded(
+                child: Text(
+                  '$currency${entry.pricePerLiter.toStringAsFixed(2)} per liter',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: colorScheme.onSurface.withValues(alpha: 0.8),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
               ),
             ],
@@ -249,12 +270,16 @@ class FuelEntryCard extends StatelessWidget {
               children: [
                 Icon(Icons.speed_rounded, size: 14, color: colorScheme.onSurface.withValues(alpha: 0.6)),
                 const SizedBox(width: 6),
-                Text(
-                  'Odometer: ${entry.odometerReading!.toStringAsFixed(0)} km',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: colorScheme.onSurface.withValues(alpha: 0.8),
+                Expanded(
+                  child: Text(
+                    'Odometer: ${entry.odometerReading!.toStringAsFixed(0)} km',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: colorScheme.onSurface.withValues(alpha: 0.8),
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
                   ),
                 ),
               ],

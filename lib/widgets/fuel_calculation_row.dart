@@ -31,6 +31,8 @@ class FuelCalculationRow extends StatelessWidget {
           child: Text(
             value,
             style: TextStyle(fontSize: 15, fontFamily: 'monospace', color: Colors.white.withValues(alpha: 0.95)),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 2,
           ),
         ),
       ],
