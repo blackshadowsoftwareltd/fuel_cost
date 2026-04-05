@@ -18,6 +18,7 @@ import 'vehicle_management_screen.dart';
 import 'maintenance_log_screen.dart';
 import 'spending_comparison_screen.dart';
 import 'vehicle_comparison_screen.dart';
+import '../services/app_update_service.dart';
 
 const Map<String, IconData> _vehicleIconMap = {
   'directions_car': Icons.directions_car,
@@ -58,6 +59,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
   void initState() {
     super.initState();
     _loadVehicles();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      AppUpdateService.checkForUpdate(context);
+    });
 
     _fadeAnimationController = AnimationController(duration: const Duration(milliseconds: 800), vsync: this);
     _slideAnimationController = AnimationController(duration: const Duration(milliseconds: 600), vsync: this);

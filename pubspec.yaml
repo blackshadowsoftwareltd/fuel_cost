@@ -51,6 +51,7 @@ dependencies:
   googleapis: ^13.2.0
   extension_google_sign_in_as_googleapis_auth: ^2.0.12
   google_fonts: ^8.0.2
+  in_app_update: ^4.2.5
 
 dev_dependencies:
   flutter_test:
