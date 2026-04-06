@@ -61,6 +61,7 @@ lib/
     theme_service.dart               # Theme mode + accent color persistence
     currency_service.dart            # 160+ currency symbols, persistence
     drive_backup_service.dart        # Google Sign-In + Google Drive appDataFolder backup/restore
+    app_update_service.dart          # Google Play in-app update check (Android-only, via in_app_update)
   screens/
     home_screen.dart                 # Dashboard: quick stats, fuel chart, action buttons grid
     add_fuel_screen.dart             # Add/edit fuel entry with vehicle selector + mileage preview
@@ -126,6 +127,7 @@ Only `fuel_entries_provider` and `summary_providers` use `@riverpod` code-gen. A
 11. **Theme Customization** - Light/dark/system mode + 10 accent colors
 12. **Currency Support** - 160+ world currencies
 13. **How-to Guide** - In-app tutorial screen
+14. **In-App Update** - Google Play in-app update prompts (Android-only); priority >= 4 forces immediate update, otherwise flexible background update
 
 ## Dependencies (Key)
 
@@ -142,6 +144,7 @@ Only `fuel_entries_provider` and `summary_providers` use `@riverpod` code-gen. A
 | `intl` | Date formatting |
 | `uuid` | Unique ID generation |
 | `path_provider` | App directory paths |
+| `in_app_update` | Google Play in-app update API (Android-only) |
 
 ## Build & Run
 
@@ -167,6 +170,7 @@ dart run build_runner build --delete-conflicting-outputs
 - **Vehicle icon resolution**: Repeated `_vehicleIconMap` const in multiple files mapping string keys to `Icons.*`
 - **Error handling**: SnackBars with colored backgrounds (green=success, red=error)
 - **Gradient theme**: Purple-blue gradient (`#667eea`, `#764ba2`, `#2196F3`) used in AddFuel, VehicleManagement, and History AppBar
+- **In-app update**: `AppUpdateService.checkForUpdate(context)` called once via `addPostFrameCallback` in HomeScreen's `initState`; only runs on Android, silently skips on iOS
 
 ## Warnings
 

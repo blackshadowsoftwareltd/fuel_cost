@@ -212,10 +212,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.15),
-            width: 1.5,
-          ),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.15), width: 1.5),
           boxShadow: [
             BoxShadow(
               color: const Color(0xFF2EA1FE).withValues(alpha: 0.55),
@@ -253,23 +250,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: LinearGradient(
-                        colors: [
-                          Colors.white.withValues(alpha: 0.25),
-                          Colors.white.withValues(alpha: 0.08),
-                        ],
+                        colors: [Colors.white.withValues(alpha: 0.25), Colors.white.withValues(alpha: 0.08)],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        width: 1.5,
-                      ),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1.5),
                       boxShadow: [
-                        BoxShadow(
-                          color: Colors.white.withValues(alpha: 0.1),
-                          blurRadius: 12,
-                          spreadRadius: 1,
-                        ),
+                        BoxShadow(color: Colors.white.withValues(alpha: 0.1), blurRadius: 12, spreadRadius: 1),
                       ],
                     ),
                     child: const Icon(Icons.local_gas_station_rounded, size: 22, color: Colors.white),
@@ -291,6 +278,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
         ),
       ),
       body: Container(
+        width: double.maxFinite,
+        height: double.maxFinite,
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: isDark
