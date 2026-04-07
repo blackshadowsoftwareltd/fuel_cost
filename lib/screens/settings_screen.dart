@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:intl/intl.dart';
 import '../services/fuel_storage_service.dart';
 import '../services/currency_service.dart';
@@ -34,6 +35,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   DateTime? _lastBackupTime;
   bool _autoBackupEnabled = false;
   double? _monthlyBudget;
+  String _appVersion = '';
+  String _buildNumber = '';
 
   @override
   void initState() {
@@ -41,6 +44,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _loadCurrency();
     _checkGoogleDriveStatus();
     _loadBudget();
+    _loadAppVersion();
+  }
+
+  Future<void> _loadAppVersion() async {
+    final info = await PackageInfo.fromPlatform();
+    if (mounted) {
+      setState(() {
+        _appVersion = info.version;
+        _buildNumber = info.buildNumber;
+      });
+    }
   }
 
   Future<void> _loadCurrency() async {
@@ -782,6 +796,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                       onTap: () => _showConfirmationDialog(title: 'Clear All Cache', message: 'This will completely reset the app. ALL data will be lost.',
                                         confirmText: 'Reset App', confirmColor: Colors.purple, onConfirm: _clearAllCache),
                                       iconColor: Colors.purple, isFirst: true, isLast: true, isLoading: _loadingAction == 'clearCache'),
+                                  ],
+                                ),
+
+                                // About Section
+                                CupertinoSection(
+                                  title: 'About',
+                                  children: [
+                                    CustomCupertinoListTile(
+                                      icon: Icons.info_outline,
+                                      title: 'App Version',
+                                      subtitle: _appVersion.isEmpty
+                                          ? 'Loading...'
+                                          : 'Version $_appVersion (Build $_buildNumber)',
+                                      iconColor: Colors.blue,
+                                      isFirst: true,
+                                      isLast: true,
+                                      onTap: () {},
+                                    ),
                                   ],
                                 ),
 

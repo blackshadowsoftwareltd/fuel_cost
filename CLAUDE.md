@@ -5,19 +5,21 @@
 **Fuel Cost** is a Flutter mobile app for tracking fuel consumption, costs, and vehicle maintenance. Users log fuel fill-ups with odometer readings, and the app calculates mileage (km/L), tracks spending over time, and provides budgeting/comparison tools.
 
 - **Package**: `com.blackshadowsoftwareltd.fuel_cost`
-- **Version**: 1.0.0+3
+- **Version**: 1.0.0+4
 - **Min SDK**: Dart ^3.8.1
 - **Platforms**: Android, iOS (portrait-only)
 
 ## Architecture
 
 ### State Management
+
 - **Riverpod** with mixed approach:
   - `fuel_entries_provider.dart`, `summary_providers.dart` use `@riverpod` annotations (code-gen, `.g.dart` files)
   - `theme_provider.dart`, `vehicle_provider.dart`, `maintenance_provider.dart` use plain Riverpod (no code-gen)
 - **Important**: Running `build_runner` regenerates `.g.dart` files. The Isar `.g.dart` was pre-generated; there is no `isar_generator` in dev_dependencies.
 
 ### Database & Storage
+
 - **Isar Community 3.3.0** (NoSQL embedded DB) for `FuelEntry` — the only Isar collection
 - **SharedPreferences** for everything else:
   - Vehicles list, selected vehicle, entry-vehicle mapping
@@ -28,18 +30,20 @@
   - Google Drive backup metadata
 
 ### Navigation
+
 - `MaterialPageRoute` push/pop — no named routes, no router package
 
 ### Theming
+
 - Material Design 3 with `ColorScheme.fromSeed()`
 - Custom `ThemeService` builds light/dark themes with configurable accent color
 - 10 preset accent colors, persisted in SharedPreferences
 
 ## Project Structure
 
-```
+```text
 lib/
-  main.dart                          # App entry, ProviderScope + MaterialApp
+  main.dart                          # App entry, ProviderScope + MaterialApp (home: SplashScreen)
   business_logic/
     fuel_calculations.dart           # Mileage metrics, efficiency chart data, total distance
   models/
@@ -63,6 +67,7 @@ lib/
     drive_backup_service.dart        # Google Sign-In + Google Drive appDataFolder backup/restore
     app_update_service.dart          # Google Play in-app update check (Android-only, via in_app_update)
   screens/
+    splash_screen.dart               # Animated splash: layered particles, gauge logo, letter reveal, road dashes (~3.6s)
     home_screen.dart                 # Dashboard: quick stats, fuel chart, action buttons grid
     add_fuel_screen.dart             # Add/edit fuel entry with vehicle selector + mileage preview
     fuel_history_screen.dart         # Filterable fuel entry list with vehicle filter chips
@@ -98,18 +103,22 @@ lib/
 ## Key Design Decisions
 
 ### Vehicle-Entry Mapping
+
 Vehicle-to-fuel-entry mapping is stored in SharedPreferences as a JSON map (`entryId -> vehicleId`), NOT in the Isar schema. This avoids needing to regenerate the Isar `.g.dart` file.
 
 ### Mileage Calculation Logic
+
 - Fuel at entry `i` is considered consumed between entry `i` and entry `i+1`
 - Per-trip mileage: `(odometer[i+1] - odometer[i]) / liters[i]`
 - Overall mileage: `totalDistance / (totalFuel - lastEntryFuel)` (last entry's fuel hasn't been consumed yet)
 - Located in `lib/business_logic/fuel_calculations.dart`
 
 ### No build_runner for Isar
+
 The `fuel_entry.g.dart` was pre-generated. Do NOT add `isar_generator` to dev_dependencies — it conflicts with other analyzer versions. If you modify the `FuelEntry` model, you must manually update the `.g.dart` or temporarily add the generator.
 
 ### Provider Code Generation
+
 Only `fuel_entries_provider` and `summary_providers` use `@riverpod` code-gen. All newer providers (vehicle, theme, maintenance) use plain Riverpod to avoid the build_runner dependency chain.
 
 ## Features
@@ -128,11 +137,12 @@ Only `fuel_entries_provider` and `summary_providers` use `@riverpod` code-gen. A
 12. **Currency Support** - 160+ world currencies
 13. **How-to Guide** - In-app tutorial screen
 14. **In-App Update** - Google Play in-app update prompts (Android-only); priority >= 4 forces immediate update, otherwise flexible background update
+15. **Animated Splash Screen** - Custom-painted splash with floating particles, dual rotating dashed rings, liquid-fill gauge logo, letter-by-letter title reveal, shimmer tagline, and animated road dashes
 
 ## Dependencies (Key)
 
 | Package | Purpose |
-|---------|---------|
+| --- | --- |
 | `flutter_riverpod` + `riverpod_annotation` | State management |
 | `isar_community` + `isar_community_flutter_libs` | Local NoSQL database |
 | `shared_preferences` | Key-value storage |
@@ -171,6 +181,7 @@ dart run build_runner build --delete-conflicting-outputs
 - **Error handling**: SnackBars with colored backgrounds (green=success, red=error)
 - **Gradient theme**: Purple-blue gradient (`#667eea`, `#764ba2`, `#2196F3`) used in AddFuel, VehicleManagement, and History AppBar
 - **In-app update**: `AppUpdateService.checkForUpdate(context)` called once via `addPostFrameCallback` in HomeScreen's `initState`; only runs on Android, silently skips on iOS
+- **Splash screen flow**: `main.dart` → `SplashScreen` → (3.6s master animation + 400ms hold) → `Navigator.pushReplacement` to `HomeScreen` with fade+scale transition. Splash uses 5 separate `AnimationController`s (master timeline + 4 continuous loops for ring/pulse/particles/road/shimmer) and 4 custom painters (`_ParticlePainter`, `_DashedRingPainter`, `_GaugeArcPainter`, `_RoadPainter`)
 
 ## Warnings
 
@@ -178,3 +189,5 @@ dart run build_runner build --delete-conflicting-outputs
 - Do NOT add `isar_generator` to dev_dependencies (analyzer conflicts)
 - The `clearAllSharedPreferences()` in `FuelStorageService` actually clears Isar, not SharedPreferences (naming is misleading)
 - Vehicle icon map (`_vehicleIconMap`) is duplicated across 4+ files — when adding new vehicle types, update all instances
+- The home screen and trip calculator screens use full-screen `Container`s for background gradients — must set `width: double.infinity, height: double.infinity` (home) or wrap content in a `ConstrainedBox` with `minHeight: screenHeight - safeAreaInsets` (trip calculator) so the gradient covers the full screen even when content is short
+- Splash screen hardcodes `'v1.0.0'` in the bottom version label — update manually when bumping versions, or wire it to `package_info_plus` if you add that dependency
