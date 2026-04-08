@@ -1,7 +1,9 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../services/tutorial_service.dart';
 import 'home_screen.dart';
+import 'onboarding_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -119,10 +121,13 @@ class _SplashScreenState extends State<SplashScreen>
   Future<void> _navigateToHome() async {
     await Future.delayed(const Duration(milliseconds: 400));
     if (!mounted) return;
+    final onboardingDone = await TutorialService.isOnboardingCompleted();
+    if (!mounted) return;
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         transitionDuration: const Duration(milliseconds: 700),
-        pageBuilder: (_, __, ___) => const HomeScreen(),
+        pageBuilder: (_, __, ___) =>
+            onboardingDone ? const HomeScreen() : const OnboardingScreen(),
         transitionsBuilder: (_, animation, __, child) {
           return FadeTransition(
             opacity: animation,

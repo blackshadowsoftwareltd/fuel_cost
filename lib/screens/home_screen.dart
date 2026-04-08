@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:showcaseview/showcaseview.dart';
+import '../services/tutorial_service.dart';
 import '../services/vehicle_service.dart';
 import '../services/budget_service.dart';
 import '../widgets/widgets.dart';
@@ -55,12 +57,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
   Map<String, double> _lastMileageCalcs = {};
   String _lastCurrency = '';
 
+  // Showcase tour keys (one per highlighted UI element)
+  final GlobalKey _vehicleSelectorKey = GlobalKey();
+  final GlobalKey _settingsKey = GlobalKey();
+  final GlobalKey _statsKey = GlobalKey();
+  final GlobalKey _actionsKey = GlobalKey();
+  final GlobalKey _addFuelFabKey = GlobalKey();
+  int _tourStepsCount = 0;
+
   @override
   void initState() {
     super.initState();
+    // Register the global ShowcaseView (required by showcaseview v5+)
+    ShowcaseView.register(
+      onComplete: (index, key) {
+        // Tour completes when we reach the last step of the dynamic list
+        if (_tourStepsCount > 0 && index == _tourStepsCount - 1) {
+          TutorialService.setTourCompleted(true);
+        }
+      },
+      onDismiss: (key) {
+        TutorialService.setTourCompleted(true);
+      },
+    );
+
     _loadVehicles();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       AppUpdateService.checkForUpdate(context);
+      _maybeStartTour();
     });
 
     _fadeAnimationController = AnimationController(duration: const Duration(milliseconds: 800), vsync: this);
@@ -86,6 +110,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
     _staggeredAnimationController.forward();
   }
 
+  Future<void> _maybeStartTour() async {
+    final done = await TutorialService.isTourCompleted();
+    if (done || !mounted) return;
+    // Small delay so animations and providers settle before highlighting
+    await Future.delayed(const Duration(milliseconds: 800));
+    if (!mounted) return;
+
+    // Only include keys whose widgets are actually mounted in the tree.
+    // A first-time user has no vehicles yet, so the stats card is not built —
+    // including its key would freeze the tour at that step.
+    final hasVehicles = _vehicles.isNotEmpty;
+    final keys = <GlobalKey>[
+      _vehicleSelectorKey,
+      _settingsKey,
+      if (hasVehicles) _statsKey,
+      _actionsKey,
+      _addFuelFabKey,
+    ];
+    _tourStepsCount = keys.length;
+
+    ShowcaseView.get().startShowCase(keys);
+  }
+
   Future<void> _loadVehicles() async {
     final vehicles = await VehicleService.getVehicles();
     final selectedId = await VehicleService.getSelectedVehicleId();
@@ -104,6 +151,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
     _slideAnimationController.dispose();
     _staggeredAnimationController.dispose();
     _summaryController.dispose();
+    ShowcaseView.get().unregister();
     super.dispose();
   }
 
@@ -202,7 +250,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
     if (currencyAsync.hasValue) _lastCurrency = currency;
 
     return Scaffold(
-      floatingActionButton: Container(
+      floatingActionButton: Showcase(
+        key: _addFuelFabKey,
+        title: 'Add Fuel Entry',
+        description:
+            'Tap here to log a new fuel fill-up. You\'ll enter liters, price, and odometer reading.',
+        tooltipBackgroundColor: const Color(0xFF4CAF50),
+        textColor: Colors.white,
+        targetBorderRadius: BorderRadius.circular(24),
+        child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(24),
           gradient: LinearGradient(
@@ -276,6 +332,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
             ),
           ),
         ),
+      ),
       ),
       body: Container(
         width: double.maxFinite,
@@ -356,7 +413,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                                 ),
                               ),
                               const SizedBox(width: 12),
-                              Container(
+                              Showcase(
+                                key: _settingsKey,
+                                title: 'Settings',
+                                description:
+                                    'Customize currency, theme, monthly budget, and backup your data to Google Drive from here.',
+                                targetShapeBorder: const CircleBorder(),
+                                tooltipBackgroundColor: const Color(0xFF667eea),
+                                textColor: Colors.white,
+                                child: Container(
                                 decoration: BoxDecoration(
                                   color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
                                   borderRadius: BorderRadius.circular(16),
@@ -382,6 +447,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                                   },
                                 ),
                               ),
+                              ),
                             ],
                           ),
                         ],
@@ -395,7 +461,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                   StaggeredAnimationWrapper(
                     index: 0,
                     animation: _staggeredAnimation,
-                    child: SizedBox(
+                    child: Showcase(
+                      key: _vehicleSelectorKey,
+                      title: 'Switch Vehicles',
+                      description:
+                          'Select "All" to see combined stats, or pick a specific vehicle. Tap the + button at the end to add a new vehicle.',
+                      tooltipBackgroundColor: const Color(0xFF2196F3),
+                      textColor: Colors.white,
+                      child: SizedBox(
                       height: 38,
                       child: Row(
                         children: [
@@ -474,13 +547,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                         ],
                       ),
                     ),
+                    ),
                   ),
 
                   const SizedBox(height: 6),
 
                   if (hasVehicles) ...[
                     // Quick Stats Card
-                    _staggerSection(
+                    Showcase(
+                      key: _statsKey,
+                      title: 'Your Fuel Stats',
+                      description:
+                          'See this month\'s spending, your last fill cost, days since last fill, and your overall efficiency at a glance.',
+                      tooltipBackgroundColor: const Color(0xFF667eea),
+                      textColor: Colors.white,
+                      child: _staggerSection(
                       0,
                       4,
                       entriesAsync.when(
@@ -547,6 +628,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                         error: (_, __) => const SizedBox(),
                       ),
                     ),
+                    ),
+
+                    // Low-entry tip banner (< 3 entries in current filter)
+                    entriesAsync.when(
+                      data: (entries) => entries.length < 3
+                          ? _buildLowEntriesBanner(entries.length, isDark)
+                          : const SizedBox.shrink(),
+                      loading: () => const SizedBox.shrink(),
+                      error: (_, __) => const SizedBox.shrink(),
+                    ),
 
                     // Summary Section
                     _staggerSection(
@@ -578,7 +669,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                   const SizedBox(height: 16),
 
                   // Action Buttons
-                  _staggerSection(
+                  Showcase(
+                    key: _actionsKey,
+                    title: 'Quick Actions',
+                    description:
+                        'Jump to Fuel History, Trip Calculator, Budget Reports, Maintenance Log, and more powerful tools.',
+                    tooltipBackgroundColor: const Color(0xFFFF9800),
+                    textColor: Colors.white,
+                    child: _staggerSection(
                     3,
                     4,
                     Column(
@@ -669,11 +767,133 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with TickerProviderStat
                       ],
                     ),
                   ),
+                  ),
                 ],
               ),
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildLowEntriesBanner(int entryCount, bool isDark) {
+    final isAll = _selectedVehicleId == null;
+    final vehicleName = isAll
+        ? null
+        : _vehicles.firstWhere(
+            (v) => v.id == _selectedVehicleId,
+            orElse: () => Vehicle(id: '', name: 'this vehicle'),
+          ).name;
+
+    final String title;
+    final String message;
+    if (entryCount == 0) {
+      title = 'No entries yet';
+      message = isAll
+          ? 'Add your first fuel entry to start tracking mileage, costs, and efficiency trends.'
+          : 'No entries for $vehicleName yet. Add one to see its stats and mileage.';
+    } else {
+      title = entryCount == 1 ? 'Just getting started' : 'Almost there!';
+      final remaining = 3 - entryCount;
+      message = isAll
+          ? 'Add $remaining more ${remaining == 1 ? "entry" : "entries"} for a better overview of your fuel efficiency, costs, and trends.'
+          : 'Add $remaining more ${remaining == 1 ? "entry" : "entries"} for $vehicleName to unlock accurate mileage and trend charts.';
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: isDark
+              ? [
+                  const Color(0xFFFF9800).withValues(alpha: 0.18),
+                  const Color(0xFFFFC107).withValues(alpha: 0.10),
+                ]
+              : [
+                  const Color(0xFFFFF8E1),
+                  const Color(0xFFFFECB3),
+                ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFFFF9800).withValues(alpha: 0.4),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFFF9800).withValues(alpha: 0.15),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFF9800).withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              Icons.lightbulb_outline_rounded,
+              color: Color(0xFFFF9800),
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : Colors.grey.shade900,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  message,
+                  style: TextStyle(
+                    fontSize: 12,
+                    height: 1.4,
+                    color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                // Progress indicator: filled dots for entered, empty for remaining
+                Row(
+                  children: List.generate(3, (i) {
+                    final filled = i < entryCount;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: Container(
+                        width: 24,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: filled
+                              ? const Color(0xFFFF9800)
+                              : (isDark
+                                  ? Colors.grey.shade700
+                                  : const Color(0xFFFF9800).withValues(alpha: 0.2)),
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

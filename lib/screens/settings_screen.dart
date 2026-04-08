@@ -8,6 +8,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:intl/intl.dart';
+import '../services/tutorial_service.dart';
+import 'splash_screen.dart';
 import '../services/fuel_storage_service.dart';
 import '../services/currency_service.dart';
 import '../services/drive_backup_service.dart';
@@ -55,6 +57,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         _buildNumber = info.buildNumber;
       });
     }
+  }
+
+  Future<void> _replayTutorial() async {
+    await TutorialService.resetAll();
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const SplashScreen()),
+      (route) => false,
+    );
   }
 
   Future<void> _loadCurrency() async {
@@ -804,13 +815,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                   title: 'About',
                                   children: [
                                     CustomCupertinoListTile(
+                                      icon: Icons.school_outlined,
+                                      title: 'Replay Tutorial',
+                                      subtitle: 'Watch the intro and tour again',
+                                      iconColor: Colors.teal,
+                                      isFirst: true,
+                                      onTap: _replayTutorial,
+                                    ),
+                                    CustomCupertinoListTile(
                                       icon: Icons.info_outline,
                                       title: 'App Version',
                                       subtitle: _appVersion.isEmpty
                                           ? 'Loading...'
                                           : 'Version $_appVersion (Build $_buildNumber)',
                                       iconColor: Colors.blue,
-                                      isFirst: true,
                                       isLast: true,
                                       onTap: () {},
                                     ),

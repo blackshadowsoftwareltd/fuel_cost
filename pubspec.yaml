@@ -53,6 +53,7 @@ dependencies:
   google_fonts: ^8.0.2
   in_app_update: ^4.2.5
   package_info_plus: ^9.0.1
+  showcaseview: ^5.0.1
 
 dev_dependencies:
   flutter_test:
